@@ -1,6 +1,14 @@
+# This fork
+
+This fork of Homebrew adds several fixes for some niche use cases:
+
+ * Python formulae should be able to work with Python formulae installed from taps
+ * Custom prefixes that actually work, with bottles too
+
+
 # Homebrew
 
-[![GitHub release](https://img.shields.io/github/release/Homebrew/brew.svg)](https://github.com/Homebrew/brew/releases)
+[![GitHub release](https://img.shields.io/github/release/jafd/brew.svg)](https://github.com/Homebrew/brew/releases)
 
 Features, usage and installation instructions are [summarised on the homepage](https://brew.sh). Terminology (e.g. the difference between a Cellar, Tap, Cask and so forth) is [explained here](https://docs.brew.sh/Formula-Cookbook#homebrew-terminology).
 
