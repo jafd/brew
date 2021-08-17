@@ -103,7 +103,7 @@ module Language
       end
 
       def detected_python_shebang(formula = self)
-        python_deps = formula.deps.map(&:name).grep(/^python(@.*)?$/)
+        python_deps = formula.deps.map(&:name).grep(/(?:^|\/)python(@.*)?$/)
 
         raise ShebangDetectionError.new("Python", "formula does not depend on Python") if python_deps.empty?
         if python_deps.length > 1
