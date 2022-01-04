@@ -32,7 +32,7 @@ module Homebrew
 
     def check_prefix
       if ENV["HOMEBREW_DEFAULT_PREFIX"]
-      end
+        # Do nothing
       elsif (Hardware::CPU.intel? || Hardware::CPU.in_rosetta2?) &&
          HOMEBREW_PREFIX.to_s == HOMEBREW_MACOS_ARM_DEFAULT_PREFIX
         if Hardware::CPU.in_rosetta2?
