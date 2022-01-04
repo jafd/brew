@@ -31,7 +31,9 @@ module Homebrew
     end
 
     def check_prefix
-      if (Hardware::CPU.intel? || Hardware::CPU.in_rosetta2?) &&
+      if ENV["HOMEBREW_DEFAULT_PREFIX"]
+      end
+      elsif (Hardware::CPU.intel? || Hardware::CPU.in_rosetta2?) &&
          HOMEBREW_PREFIX.to_s == HOMEBREW_MACOS_ARM_DEFAULT_PREFIX
         if Hardware::CPU.in_rosetta2?
           odie <<~EOS
