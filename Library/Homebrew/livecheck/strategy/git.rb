@@ -30,8 +30,8 @@ module Homebrew
         # lowest to highest).
         PRIORITY = 8
 
-        # The default regex used to naively identify numeric versions from tags
-        # when a regex isn't provided.
+        # The default regex used to naively identify versions from tags when a
+        # regex isn't provided.
         DEFAULT_REGEX = /\D*(.+)/.freeze
 
         # Whether the strategy can be applied to the provided URL.
@@ -86,14 +86,20 @@ module Homebrew
           params(
             tags:  T::Array[String],
             regex: T.nilable(Regexp),
-            block: T.nilable(
-              T.proc.params(arg0: T::Array[String], arg1: T.nilable(Regexp))
-                .returns(T.any(String, T::Array[String], NilClass)),
-            ),
+            block: T.untyped,
           ).returns(T::Array[String])
         }
         def self.versions_from_tags(tags, regex = nil, &block)
-          return Strategy.handle_block_return(block.call(tags, regex || DEFAULT_REGEX)) if block
+          if block
+            block_return_value = if regex.present?
+              yield(tags, regex)
+            elsif block.arity == 2
+              yield(tags, DEFAULT_REGEX)
+            else
+              yield(tags)
+            end
+            return Strategy.handle_block_return(block_return_value)
+          end
 
           tags_only_debian = tags.all? { |tag| tag.start_with?("debian/") }
 
@@ -122,16 +128,13 @@ module Homebrew
         # @return [Hash]
         sig {
           params(
-            url:   String,
-            regex: T.nilable(Regexp),
-            cask:  T.nilable(Cask::Cask),
-            block: T.nilable(
-              T.proc.params(arg0: T::Array[String], arg1: T.nilable(Regexp))
-                .returns(T.any(String, T::Array[String], NilClass)),
-            ),
+            url:     String,
+            regex:   T.nilable(Regexp),
+            _unused: T.nilable(T::Hash[Symbol, T.untyped]),
+            block:   T.untyped,
           ).returns(T::Hash[Symbol, T.untyped])
         }
-        def self.find_versions(url, regex = nil, cask: nil, &block)
+        def self.find_versions(url:, regex: nil, **_unused, &block)
           match_data = { matches: {}, regex: regex, url: url }
 
           tags_data = tag_info(url, regex)

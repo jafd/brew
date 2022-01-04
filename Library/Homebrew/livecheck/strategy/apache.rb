@@ -1,4 +1,4 @@
-# typed: false
+# typed: true
 # frozen_string_literal: true
 
 module Homebrew
@@ -7,14 +7,19 @@ module Homebrew
       # The {Apache} strategy identifies versions of software at apache.org
       # by checking directory listing pages.
       #
-      # Apache URLs start with `https://www.apache.org/dyn/closer.lua?path=`.
-      # The `path` parameter takes one of the following formats:
+      # Most Apache URLs start with `https://www.apache.org/dyn/` and include
+      # a `filename` or `path` query string parameter where the value is a
+      # path to a file. The path takes one of the following formats:
       #
       # * `example/1.2.3/example-1.2.3.tar.gz`
       # * `example/example-1.2.3/example-1.2.3.tar.gz`
       # * `example/example-1.2.3-bin.tar.gz`
       #
-      # When the `path` contains a version directory (e.g. `/1.2.3/`,
+      # This strategy also handles a few common mirror/backup URLs where the
+      # path is provided outside of a query string parameter (e.g.
+      # `https://archive.apache.org/dist/example/1.2.3/example-1.2.3.tar.gz`).
+      #
+      # When the path contains a version directory (e.g. `/1.2.3/`,
       # `/example-1.2.3/`, etc.), the default regex matches numeric versions
       # in directory names. Otherwise, the default regex matches numeric
       # versions in filenames.
@@ -25,8 +30,11 @@ module Homebrew
 
         # The `Regexp` used to determine if the strategy applies to the URL.
         URL_MATCH_REGEX = %r{
-          ^https?://www\.apache\.org
-          /dyn/.+path=
+          ^https?://
+          (?:www\.apache\.org/dyn/.+(?:path|filename)=/?|
+          archive\.apache\.org/dist/|
+          dlcdn\.apache\.org/|
+          downloads\.apache\.org/)
           (?<path>.+?)/      # Path to directory of files or version directories
           (?<prefix>[^/]*?)  # Any text in filename or directory before version
           v?\d+(?:\.\d+)+    # The numeric version
@@ -42,6 +50,38 @@ module Homebrew
           URL_MATCH_REGEX.match?(url)
         end
 
+        # Extracts information from a provided URL and uses it to generate
+        # various input values used by the strategy to check for new versions.
+        # Some of these values act as defaults and can be overridden in a
+        # `livecheck` block.
+        #
+        # @param url [String] the URL used to generate values
+        # @return [Hash]
+        sig { params(url: String).returns(T::Hash[Symbol, T.untyped]) }
+        def self.generate_input_values(url)
+          values = {}
+
+          match = url.match(URL_MATCH_REGEX)
+          return values if match.blank?
+
+          # Example URL: `https://archive.apache.org/dist/example/`
+          values[:url] = "https://archive.apache.org/dist/#{match[:path]}/"
+
+          regex_prefix = Regexp.escape(match[:prefix] || "").gsub("\\-", "-")
+
+          # Use `\.t` instead of specific tarball extensions (e.g. .tar.gz)
+          suffix = match[:suffix]&.sub(Strategy::TARBALL_EXTENSION_REGEX, "\.t")
+          regex_suffix = Regexp.escape(suffix || "").gsub("\\-", "-")
+
+          # Example directory regex: `%r{href=["']?v?(\d+(?:\.\d+)+)/}i`
+          # Example file regexes:
+          # * `/href=["']?example-v?(\d+(?:\.\d+)+)\.t/i`
+          # * `/href=["']?example-v?(\d+(?:\.\d+)+)-bin\.zip/i`
+          values[:regex] = /href=["']?#{regex_prefix}v?(\d+(?:\.\d+)+)#{regex_suffix}/i
+
+          values
+        end
+
         # Generates a URL and regex (if one isn't provided) and passes them
         # to {PageMatch.find_versions} to identify versions in the content.
         #
@@ -50,30 +90,16 @@ module Homebrew
         # @return [Hash]
         sig {
           params(
-            url:   String,
-            regex: T.nilable(Regexp),
-            cask:  T.nilable(Cask::Cask),
-            block: T.nilable(
-              T.proc.params(arg0: String, arg1: Regexp).returns(T.any(String, T::Array[String], NilClass)),
-            ),
+            url:    String,
+            regex:  T.nilable(Regexp),
+            unused: T.nilable(T::Hash[Symbol, T.untyped]),
+            block:  T.untyped,
           ).returns(T::Hash[Symbol, T.untyped])
         }
-        def self.find_versions(url, regex, cask: nil, &block)
-          match = url.match(URL_MATCH_REGEX)
+        def self.find_versions(url:, regex: nil, **unused, &block)
+          generated = generate_input_values(url)
 
-          # Use `\.t` instead of specific tarball extensions (e.g. .tar.gz)
-          suffix = match[:suffix].sub(/\.t(?:ar\..+|[a-z0-9]+)$/i, "\.t")
-
-          # Example URL: `https://archive.apache.org/dist/example/`
-          page_url = "https://archive.apache.org/dist/#{match[:path]}/"
-
-          # Example directory regex: `%r{href=["']?v?(\d+(?:\.\d+)+)/}i`
-          # Example file regexes:
-          # * `/href=["']?example-v?(\d+(?:\.\d+)+)\.t/i`
-          # * `/href=["']?example-v?(\d+(?:\.\d+)+)-bin\.zip/i`
-          regex ||= /href=["']?#{Regexp.escape(match[:prefix])}v?(\d+(?:\.\d+)+)#{Regexp.escape(suffix)}/i
-
-          PageMatch.find_versions(page_url, regex, cask: cask, &block)
+          T.unsafe(PageMatch).find_versions(url: generated[:url], regex: regex || generated[:regex], **unused, &block)
         end
       end
     end

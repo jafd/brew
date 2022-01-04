@@ -39,18 +39,20 @@ module Homebrew
         sig {
           params(
             content: String,
-            block:   T.nilable(
-              T.proc.params(arg0: T::Hash[String, T.untyped]).returns(T.any(String, T::Array[String], NilClass)),
-            ),
+            regex:   T.nilable(Regexp),
+            block:   T.untyped,
           ).returns(T::Array[String])
         }
-        def self.versions_from_content(content, &block)
+        def self.versions_from_content(content, regex = nil, &block)
           require "yaml"
 
           yaml = YAML.safe_load(content)
           return [] if yaml.blank?
 
-          return Strategy.handle_block_return(block.call(yaml)) if block
+          if block
+            block_return_value = regex.present? ? yield(yaml, regex) : yield(yaml)
+            return Strategy.handle_block_return(block_return_value)
+          end
 
           version = yaml["version"]
           version.present? ? [version] : []
@@ -59,25 +61,26 @@ module Homebrew
         # Checks the YAML content at the URL for new versions.
         #
         # @param url [String] the URL of the content to check
-        # @param regex [Regexp, nil] a regex used for matching versions
         # @return [Hash]
         sig {
           params(
-            url:   String,
-            regex: T.nilable(Regexp),
-            cask:  T.nilable(Cask::Cask),
-            block: T.nilable(T.proc.params(arg0: T::Hash[String, T.untyped]).returns(T.nilable(String))),
+            url:     String,
+            regex:   T.nilable(Regexp),
+            _unused: T.nilable(T::Hash[Symbol, T.untyped]),
+            block:   T.untyped,
           ).returns(T::Hash[Symbol, T.untyped])
         }
-        def self.find_versions(url, regex, cask: nil, &block)
-          raise ArgumentError, "The #{T.must(name).demodulize} strategy does not support a regex." if regex
+        def self.find_versions(url:, regex: nil, **_unused, &block)
+          if regex.present? && block.blank?
+            raise ArgumentError, "#{T.must(name).demodulize} only supports a regex when using a `strategy` block"
+          end
 
-          match_data = { matches: {}, regex: regex, url: url }
+          match_data = { matches: {}, url: url }
 
           match_data.merge!(Strategy.page_content(url))
           content = match_data.delete(:content)
 
-          versions_from_content(content, &block).each do |version_text|
+          versions_from_content(content, regex, &block).each do |version_text|
             match_data[:matches][version_text] = Version.new(version_text)
           end
 

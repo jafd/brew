@@ -8,6 +8,7 @@ source "https://rubygems.org"
 # installed gems (should all be require: false)
 gem "bootsnap", require: false
 gem "byebug", require: false
+gem "json_schemer", require: false
 gem "minitest", require: false
 gem "parallel_tests", require: false
 gem "ronn", require: false
@@ -32,7 +33,7 @@ group :sorbet, optional: true do
 end
 
 # vendored gems
-gem "activesupport"
+gem "activesupport", "< 7" # 7 requires Ruby 2.7
 gem "concurrent-ruby"
 gem "did_you_mean" # remove when HOMEBREW_REQUIRED_RUBY_VERSION >= 2.7
 gem "mechanize"
