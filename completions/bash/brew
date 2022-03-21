@@ -357,6 +357,7 @@ _brew_audit() {
       --formula
       --git
       --help
+      --installed
       --new
       --no-appcast
       --online
@@ -436,6 +437,7 @@ _brew_bump() {
       --help
       --limit
       --no-pull-requests
+      --open-pr
       --quiet
       --start-with
       --verbose
@@ -1082,6 +1084,7 @@ _brew_instal() {
       --no-binaries
       --no-quarantine
       --only-dependencies
+      --overwrite
       --prefpanedir
       --qlplugindir
       --quarantine
@@ -1138,6 +1141,7 @@ _brew_install() {
       --no-binaries
       --no-quarantine
       --only-dependencies
+      --overwrite
       --prefpanedir
       --qlplugindir
       --quarantine
@@ -1574,7 +1578,6 @@ _brew_pr_pull() {
     -*)
       __brewcomp "
       --artifact
-      --autosquash
       --branch-okay
       --clean
       --committer
@@ -1584,6 +1587,7 @@ _brew_pr_pull() {
       --ignore-missing-artifacts
       --keep-old
       --message
+      --no-autosquash
       --no-commit
       --no-upload
       --quiet
@@ -2041,12 +2045,12 @@ _brew_unbottled() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --all
       --debug
       --dependents
       --help
       --quiet
       --tag
-      --total
       --verbose
       "
       return

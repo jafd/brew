@@ -62,7 +62,7 @@ module Homebrew
   def bump_cask_pr
     args = bump_cask_pr_args.parse
 
-    odeprecated "`brew bump-cask-pr --write`", "`brew bump-cask-pr --write-only`" if args.write?
+    odisabled "`brew bump-cask-pr --write`", "`brew bump-cask-pr --write-only`" if args.write?
 
     # This will be run by `brew style` later so run it first to not start
     # spamming during normal output.
@@ -145,15 +145,13 @@ module Homebrew
         end
 
         cask.languages.each do |language|
-          next if language == cask.language
-
           lang_config = tmp_config.merge(Cask::Config.new(explicit: { languages: [language] }))
           replacement_pairs << fetch_cask(tmp_contents, config: lang_config)
         end
       end
     end
 
-    if new_hash.present?
+    if new_hash.present? && cask.language.blank? # avoid repeated replacement for multilanguage cask
       hash_regex = old_hash == :no_check ? ":no_check" : "[\"']#{Regexp.escape(old_hash.to_s)}[\"']"
 
       replacement_pairs << [

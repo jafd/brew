@@ -413,7 +413,7 @@ class Reporter
       renamed_formulae << [old_full_name, new_full_name]
     end
 
-    unless renamed_formulae.empty?
+    if renamed_formulae.present?
       @report[:A] -= renamed_formulae.map(&:last)
       @report[:D] -= renamed_formulae.map(&:first)
       @report[:R] = renamed_formulae.to_a
@@ -599,13 +599,15 @@ class ReporterHub
       # Format list items of renamed formulae
       case key
       when :R
-        name = pretty_installed(name) if installed?(name)
-        new_name = pretty_installed(new_name) if installed?(new_name)
-        "#{name} -> #{new_name}" unless only_installed
+        unless only_installed
+          name = pretty_installed(name) if installed?(name)
+          new_name = pretty_installed(new_name) if installed?(new_name)
+          "#{name} -> #{new_name}"
+        end
       when :A
-        name if !installed?(name) && !only_installed
+        name if !only_installed && !installed?(name)
       when :AC
-        name.split("/").last if !cask_installed?(name) && !only_installed
+        name.split("/").last if !only_installed && !cask_installed?(name)
       when :MC, :DC
         name = name.split("/").last
         if cask_installed?(name)

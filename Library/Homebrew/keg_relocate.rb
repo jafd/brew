@@ -8,6 +8,8 @@ class Keg
   LIBRARY_PLACEHOLDER = "@@HOMEBREW_LIBRARY@@"
   PERL_PLACEHOLDER = "@@HOMEBREW_PERL@@"
   JAVA_PLACEHOLDER = "@@HOMEBREW_JAVA@@"
+  NULL_BYTE = "\x00"
+  NULL_BYTE_STRING = "\\x00"
 
   class Relocation
     extend T::Sig
@@ -173,17 +175,41 @@ class Keg
   end
   alias generic_recursive_fgrep_args recursive_fgrep_args
 
+  def egrep_args
+    grep_bin = "grep"
+    grep_args = [
+      "--files-with-matches",
+      "--perl-regexp",
+      "--binary-files=text",
+    ]
+
+    [grep_bin, grep_args]
+  end
+  alias generic_egrep_args egrep_args
+
   def each_unique_file_matching(string)
     Utils.popen_read("fgrep", recursive_fgrep_args, string, to_s) do |io|
       hardlinks = Set.new
 
       until io.eof?
         file = Pathname.new(io.readline.chomp)
+        # Don't return symbolic links.
         next if file.symlink?
 
+        # To avoid returning hardlinks, only return files with unique inodes.
+        # Hardlinks will have the same inode as the file they point to.
         yield file if hardlinks.add? file.stat.ino
       end
     end
+  end
+
+  def binary_file?(file)
+    grep_bin, grep_args = egrep_args
+
+    # We need to pass NULL_BYTE_STRING, the literal string "\x00", to grep
+    # rather than NULL_BYTE, a literal null byte, because grep will internally
+    # convert the literal string "\x00" to a null byte.
+    Utils.popen_read(grep_bin, *grep_args, NULL_BYTE_STRING, file).present?
   end
 
   def lib

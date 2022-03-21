@@ -102,6 +102,7 @@ describe Homebrew::Service do
         root_dir var
         working_dir var
         keep_alive true
+        launch_only_once true
         process_type :interactive
         restart_delay 30
         interval 5
@@ -127,6 +128,8 @@ describe Homebrew::Service do
         \t<true/>
         \t<key>Label</key>
         \t<string>homebrew.mxcl.formula_name</string>
+        \t<key>LaunchOnlyOnce</key>
+        \t<true/>
         \t<key>LegacyTimers</key>
         \t<true/>
         \t<key>ProcessType</key>
@@ -288,10 +291,11 @@ describe Homebrew::Service do
       expect(unit).to eq(unit_expect.strip)
     end
 
-    it "returns valid partial unit" do
+    it "returns valid partial oneshot unit" do
       f.class.service do
         run opt_bin/"beanstalkd"
         run_type :immediate
+        launch_only_once true
       end
 
       unit = f.service.to_systemd_unit
@@ -303,10 +307,10 @@ describe Homebrew::Service do
         WantedBy=multi-user.target
 
         [Service]
-        Type=simple
+        Type=oneshot
         ExecStart=#{HOMEBREW_PREFIX}/opt/#{name}/bin/beanstalkd
       EOS
-      expect(unit).to eq(unit_expect)
+      expect(unit).to eq(unit_expect.strip)
     end
   end
 
@@ -408,7 +412,7 @@ describe Homebrew::Service do
         run_type :immediate
       end
 
-      expect(f.service.timed?).to eq(false)
+      expect(f.service.timed?).to be(false)
     end
 
     it "returns true for interval" do
@@ -417,7 +421,35 @@ describe Homebrew::Service do
         run_type :interval
       end
 
-      expect(f.service.timed?).to eq(true)
+      expect(f.service.timed?).to be(true)
+    end
+  end
+
+  describe "#keep_alive?" do
+    it "returns true when keep_alive set to true" do
+      f.class.service do
+        run [opt_bin/"beanstalkd", "test"]
+        keep_alive true
+      end
+
+      expect(f.service.keep_alive?).to be(true)
+    end
+
+    it "returns false when keep_alive not set" do
+      f.class.service do
+        run [opt_bin/"beanstalkd", "test"]
+      end
+
+      expect(f.service.keep_alive?).to be(false)
+    end
+
+    it "returns false when keep_alive set to false" do
+      f.class.service do
+        run [opt_bin/"beanstalkd", "test"]
+        keep_alive false
+      end
+
+      expect(f.service.keep_alive?).to be(false)
     end
   end
 
