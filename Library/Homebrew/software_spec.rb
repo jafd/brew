@@ -507,7 +507,6 @@ class BottleSpecification
   sig { params(tag: Utils::Bottles::Tag).returns(T.any(Symbol, String)) }
   def tag_to_cellar(tag = Utils::Bottles.tag)
     spec = collector.specification_for(tag)
-    opoo "SPEC (#{tag}): #{spex}"
     if spec.present?
       spec.cellar
     else
@@ -518,7 +517,6 @@ class BottleSpecification
   sig { params(tag: Utils::Bottles::Tag).returns(T::Boolean) }
   def compatible_locations?(tag: Utils::Bottles.tag)
     cellar = tag_to_cellar(tag)
-    opoo "THE CELLAR IS #{cellar}"
 
     return true if [:any, :any_skip_relocation].include?(cellar)
 
