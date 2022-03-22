@@ -205,7 +205,9 @@ module Utils
 
       sig { returns(String) }
       def default_prefix
-        if linux?
+        if ENV["HOMEBREW_DEFAULT_PREFIX"]
+          ENV['HOMEBREW_DEFAULT_PREFIX']
+        elsif linux?
           HOMEBREW_LINUX_DEFAULT_PREFIX
         elsif arch == :arm64
           HOMEBREW_MACOS_ARM_DEFAULT_PREFIX
@@ -216,7 +218,9 @@ module Utils
 
       sig { returns(String) }
       def default_cellar
-        if linux?
+        if ENV["HOMEBREW_DEFAULT_PREFIX"]
+          "#{ENV['HOMEBREW_DEFAULT_PREFIX']}/Cellar"
+        elsif linux?
           Homebrew::DEFAULT_LINUX_CELLAR
         elsif arch == :arm64
           Homebrew::DEFAULT_MACOS_ARM_CELLAR
