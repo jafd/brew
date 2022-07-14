@@ -12,13 +12,13 @@ require "utils/bottles"
 require "patch"
 require "compilers"
 require "os/mac/version"
-require "extend/on_os"
+require "extend/on_system"
 
 class SoftwareSpec
   extend T::Sig
 
   extend Forwardable
-  include OnOS
+  include OnSystem::MacOSAndLinux
 
   PREDEFINED_OPTIONS = {
     universal: Option.new("universal", "Build a universal binary"),
@@ -27,7 +27,7 @@ class SoftwareSpec
 
   attr_reader :name, :full_name, :owner, :build, :resources, :patches, :options, :deprecated_flags,
               :deprecated_options, :dependency_collector, :bottle_specification, :compiler_failures,
-              :uses_from_macos_elements, :bottle_disable_reason
+              :uses_from_macos_elements
 
   def_delegators :@resource, :stage, :fetch, :verify_download_integrity, :source_modified_time, :download_name,
                  :cached_download, :clear_cache, :checksum, :mirrors, :specs, :using, :version, :mirror,
@@ -48,7 +48,6 @@ class SoftwareSpec
     @build = BuildOptions.new(Options.create(@flags), options)
     @compiler_failures = []
     @uses_from_macos_elements = []
-    @bottle_disable_reason = nil
   end
 
   def owner=(owner)
@@ -79,17 +78,6 @@ class SoftwareSpec
     dependency_collector.add(@resource)
   end
 
-  def bottle_unneeded?
-    return false unless @bottle_disable_reason
-
-    @bottle_disable_reason.unneeded?
-  end
-
-  sig { returns(T::Boolean) }
-  def bottle_disabled?
-    @bottle_disable_reason ? true : false
-  end
-
   def bottle_defined?
     !bottle_specification.collector.tags.empty?
   end
@@ -103,12 +91,8 @@ class SoftwareSpec
       (tag.present? || bottle_specification.compatible_locations? || owner.force_bottle)
   end
 
-  def bottle(disable_type = nil, disable_reason = nil, &block)
-    if disable_type
-      @bottle_disable_reason = BottleDisableReason.new(disable_type, disable_reason)
-    else
-      bottle_specification.instance_eval(&block)
-    end
+  def bottle(&block)
+    bottle_specification.instance_eval(&block)
   end
 
   def resource_defined?(name)
@@ -393,14 +377,14 @@ class Bottle
     json = begin
       JSON.parse(manifest_json)
     rescue JSON::ParserError
-      raise "The downloaded GitHub Packages manifest was corrupted or modified (it is not valid JSON): "\
+      raise "The downloaded GitHub Packages manifest was corrupted or modified (it is not valid JSON): " \
             "\n#{github_packages_manifest_resource.cached_download}"
     end
 
     manifests = json["manifests"]
     raise ArgumentError, "Missing 'manifests' section." if manifests.blank?
 
-    manifests_annotations = manifests.map { |m| m["annotations"] }
+    manifests_annotations = manifests.map { |m| m["annotations"] }.compact
     raise ArgumentError, "Missing 'annotations' section." if manifests_annotations.blank?
 
     bottle_digest = @resource.checksum.hexdigest
@@ -473,6 +457,8 @@ class Bottle
 end
 
 class BottleSpecification
+  RELOCATABLE_CELLARS = [:any, :any_skip_relocation].freeze
+
   extend T::Sig
 
   attr_rw :rebuild
@@ -518,12 +504,15 @@ class BottleSpecification
   def compatible_locations?(tag: Utils::Bottles.tag)
     cellar = tag_to_cellar(tag)
 
-    return true if [:any, :any_skip_relocation].include?(cellar)
+    return true if RELOCATABLE_CELLARS.include?(cellar)
 
     prefix = Pathname(cellar).parent.to_s
 
-    compatible_cellar = cellar == HOMEBREW_CELLAR.to_s
-    compatible_prefix = prefix == HOMEBREW_PREFIX.to_s
+    cellar_relocatable = cellar.size >= HOMEBREW_CELLAR.to_s.size && ENV["HOMEBREW_RELOCATE_BUILD_PREFIX"].present?
+    prefix_relocatable = prefix.size >= HOMEBREW_PREFIX.to_s.size && ENV["HOMEBREW_RELOCATE_BUILD_PREFIX"].present?
+
+    compatible_cellar = cellar == HOMEBREW_CELLAR.to_s || cellar_relocatable
+    compatible_prefix = prefix == HOMEBREW_PREFIX.to_s || prefix_relocatable
 
     compatible_cellar && compatible_prefix
   end
@@ -594,7 +583,7 @@ class BottleSpecification
 end
 
 class PourBottleCheck
-  include OnOS
+  include OnSystem::MacOSAndLinux
 
   def initialize(formula)
     @formula = formula

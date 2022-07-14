@@ -23,7 +23,12 @@ module Homebrew
         description: "Prefix all download URLs, including those for bottles, with this value. " \
                      "For example, `HOMEBREW_ARTIFACT_DOMAIN=http://localhost:8080` will cause a " \
                      "formula with the URL `https://example.com/foo.tar.gz` to instead download from " \
-                     "`http://localhost:8080/example.com/foo.tar.gz`.",
+                     "`http://localhost:8080/https://example.com/foo.tar.gz`. " \
+                     "Bottle URLs however, have their domain replaced with this prefix. " \
+                     "This results in e.g. " \
+                     "`https://ghcr.io/v2/homebrew/core/gettext/manifests/0.21` " \
+                     "to instead be downloaded from " \
+                     "`http://localhost:8080/v2/homebrew/core/gettext/manifests/0.21`",
       },
       HOMEBREW_AUTO_UPDATE_SECS:                 {
         description: "Run `brew update` once every `HOMEBREW_AUTO_UPDATE_SECS` seconds before some commands, " \
@@ -39,8 +44,12 @@ module Homebrew
         description:  "Use this as the `bat` configuration file.",
         default_text: "`$HOME/.config/bat/config`.",
       },
+      HOMEBREW_BAT_THEME:                        {
+        description:  "Use this as the `bat` theme for syntax highlighting.",
+        default_text: "`$BAT_THEME`.",
+      },
       HOMEBREW_BOOTSNAP:                         {
-        description: "If set, use Bootsnap to speed up repeated `brew` calls. "\
+        description: "If set, use Bootsnap to speed up repeated `brew` calls. " \
                      "A no-op when using Homebrew's vendored, relocatable Ruby on macOS (as it doesn't work).",
         boolean:     true,
       },
@@ -73,8 +82,8 @@ module Homebrew
         description: "Append these options to all `cask` commands. All `--*dir` options, " \
                      "`--language`, `--require-sha`, `--no-quarantine` and `--no-binaries` are supported. " \
                      "For example, you might add something like the following to your " \
-                     "`~/.profile`, `~/.bash_profile`, or `~/.zshenv`:\n\n" \
-                     '    `export HOMEBREW_CASK_OPTS="--appdir=~/Applications --fontdir=/Library/Fonts"`',
+                     "`~/.profile`, `~/.bash_profile`, or `~/.zshenv`:" \
+                     '\n\n    `export HOMEBREW_CASK_OPTS="--appdir=~/Applications --fontdir=/Library/Fonts"`',
       },
       HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS:       {
         description: "If set, `brew install`, `brew upgrade` and `brew reinstall` will cleanup all formulae " \
@@ -98,6 +107,10 @@ module Homebrew
         description: "If set, do not pass `--disable` when invoking `curl`(1), which disables the " \
                      "use of `curlrc`.",
         boolean:     true,
+      },
+      HOMEBREW_CURL_PATH:                        {
+        description: "Linux only: Set this value to a new enough `curl` executable for Homebrew to use.",
+        default:     "curl",
       },
       HOMEBREW_CURL_RETRIES:                     {
         description: "Pass the given retry count to `--retry` when invoking `curl`(1).",
@@ -171,7 +184,7 @@ module Homebrew
                      "developer commands may require additional permissions.",
       },
       HOMEBREW_GITHUB_PACKAGES_TOKEN:            {
-        description: "Use this GitHub personal access token when accessing the GitHub Packages Registry "\
+        description: "Use this GitHub personal access token when accessing the GitHub Packages Registry " \
                      "(where bottles may be stored).",
       },
       HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN: {
@@ -191,6 +204,10 @@ module Homebrew
       HOMEBREW_GIT_NAME:                         {
         description: "Set the Git author and committer name to this value.",
       },
+      HOMEBREW_GIT_PATH:                         {
+        description: "Linux only: Set this value to a new enough `git` executable for Homebrew to use.",
+        default:     "git",
+      },
       HOMEBREW_INSTALL_BADGE:                    {
         description:  "Print this text before the installation summary of each successful build.",
         default_text: 'The "Beer Mug" emoji.',
@@ -204,9 +221,10 @@ module Homebrew
         boolean:     true,
       },
       HOMEBREW_LIVECHECK_WATCHLIST:              {
-        description: "Consult this file for the list of formulae to check by default when no formula argument " \
-                     "is passed to `brew livecheck`.",
-        default:     "$HOME/.brew_livecheck_watchlist",
+        description:  "Consult this file for the list of formulae to check by default when no formula argument " \
+                      "is passed to `brew livecheck`.",
+        default_text: "`$HOME/.brew_livecheck_watchlist`",
+        default:      "~/.brew_livecheck_watchlist",
       },
       HOMEBREW_LOGS:                             {
         description:  "Use this directory to store log files.",
@@ -240,7 +258,7 @@ module Homebrew
       HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK:    {
         description: "If set, do not check for broken linkage of dependents or outdated dependents after " \
                      "installing, upgrading or reinstalling formulae. This will result in fewer dependents " \
-                     " (and their dependencies) being upgraded or reinstalled but may result in more breakage " \
+                     "(and their dependencies) being upgraded or reinstalled but may result in more breakage " \
                      "from running `brew install <formula>` or `brew upgrade <formula>`.",
         boolean:     true,
       },
@@ -325,8 +343,9 @@ module Homebrew
         default_text: "macOS: `/private/tmp`, Linux: `/tmp`.",
         default:      HOMEBREW_DEFAULT_TEMP,
       },
-      HOMEBREW_UPDATE_REPORT_ONLY_INSTALLED:     {
-        description: "If set, `brew update` only lists updates to installed software.",
+      HOMEBREW_UPDATE_REPORT_ALL_FORMULAE:       {
+        description: "If set, `brew update` lists changes to all formulae and cask files rather than only showing " \
+                     "when they are new and not installed or outdated and installed.",
         boolean:     true,
       },
       HOMEBREW_UPDATE_TO_TAG:                    {

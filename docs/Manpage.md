@@ -177,7 +177,7 @@ show the intersection of dependencies for each formula.
 * `--cask`:
   Treat all named arguments as casks.
 
-### `desc` [*`options`*] *`formula`*|*`text`*|`/`*`regex`*`/` [...]
+### `desc` [*`options`*] *`formula`*|*`cask`*|*`text`*|`/`*`regex`*`/` [...]
 
 Display *`formula`*'s name and one-line description.
 Formula descriptions are cached; the cache is created on the
@@ -189,6 +189,10 @@ first search, making that search slower than subsequent ones.
   Search just names for *`text`*. If *`text`* is flanked by slashes, it is interpreted as a regular expression.
 * `-d`, `--description`:
   Search just descriptions for *`text`*. If *`text`* is flanked by slashes, it is interpreted as a regular expression.
+* `--formula`:
+  Treat all named arguments as formulae.
+* `--cask`:
+  Treat all named arguments as casks.
 
 ### `developer` [*`subcommand`*]
 
@@ -360,6 +364,8 @@ is already installed but outdated.
   Disable/enable quarantining of downloads (default: enabled).
 * `--skip-cask-deps`:
   Skip installing cask dependencies.
+* `--zap`:
+  For use with `brew reinstall --cask`. Remove all files associated with a cask. *May remove files which are shared between applications.*
 
 ### `leaves` [*`--installed-on-request`*] [*`--installed-as-dependency`*]
 
@@ -483,11 +489,11 @@ information is displayed in interactive shells, and suppressed otherwise.
 * `--fetch-HEAD`:
   Fetch the upstream repository to detect if the HEAD installation of the formula is outdated. Otherwise, the repository's HEAD will only be checked for updates when a new stable or development version has been released.
 * `--greedy`:
-  Print outdated casks with `auto_updates true` or `version :latest`.
+  Also include outdated casks with `auto_updates true` or `version :latest`.
 * `--greedy-latest`:
-  Print outdated casks including those with `version :latest`.
+  Also include outdated casks including those with `version :latest`.
 * `--greedy-auto-updates`:
-  Print outdated casks including those with `auto_updates true`.
+  Also include outdated casks including those with `auto_updates true`.
 
 ### `pin` *`installed_formula`* [...]
 
@@ -551,6 +557,8 @@ reinstalled formulae or, every 30 days, for all formulae.
   Disable/enable quarantining of downloads (default: enabled).
 * `--skip-cask-deps`:
   Skip installing cask dependencies.
+* `--zap`:
+  For use with `brew reinstall --cask`. Remove all files associated with a cask. *May remove files which are shared between applications.*
 
 ### `search`, `-S` [*`options`*] *`text`*|`/`*`regex`*`/` [...]
 
@@ -563,7 +571,7 @@ The search for *`text`* is extended online to `homebrew/core` and `homebrew/cask
 * `--cask`:
   Search online and locally for casks.
 * `--desc`:
-  Search for formulae with a description matching *`text`* and casks with a name matching *`text`*.
+  Search for formulae with a description matching *`text`* and casks with a name or description matching *`text`*.
 * `--pull-request`:
   Search for GitHub pull requests containing *`text`*.
 * `--open`:
@@ -612,7 +620,7 @@ simplifies but also limits. This two-argument command makes no
 assumptions, so taps can be cloned from places other than GitHub and
 using protocols other than HTTPS, e.g. SSH, git, HTTP, FTP(S), rsync.
 
-* `--force-auto-update`:
+* `--[no-]force-auto-update`:
   Auto-update tap even if it is not hosted on GitHub. By default, only taps hosted on GitHub are auto-updated (for performance reasons).
 * `--custom-remote`:
   Install or change a tap with a custom remote. Useful for mirrors.
@@ -674,7 +682,7 @@ Fetch the newest version of Homebrew and all formulae from GitHub using `git`(1)
 
 * `--merge`:
   Use `git merge` to apply updates (rather than `git rebase`).
-* `--preinstall`:
+* `--auto-update`:
   Run on auto-updates (e.g. before `brew install`). Skips some slower steps.
 * `-f`, `--force`:
   Always do a slower, full update check (even if unnecessary).
@@ -1026,6 +1034,12 @@ nor vice versa. It must use whichever style specification the formula already us
   Specify the new commit *`revision`* corresponding to the specified git *`tag`* or specified *`version`*.
 * `-f`, `--force`:
   Ignore duplicate open PRs. Remove all mirrors if `--mirror` was not specified.
+* `--python-package-name`:
+  Use the specified *`package-name`* when finding Python resources for *`formula`*. If no package name is specified, it will be inferred from the formula's stable URL.
+* `--python-extra-packages`:
+  Include these additional Python packages when finding resources.
+* `--python-exclude-packages`:
+  Exclude these Python packages when finding resources.
 
 ### `bump-revision` [*`options`*] *`formula`* [...]
 
@@ -1233,6 +1247,8 @@ Find pull requests that can be automatically merged using `brew pr-publish`.
 
 * `--tap`:
   Target tap repository (default: `homebrew/core`).
+* `--workflow`:
+  Workflow file to use with `brew pr-publish`.
 * `--with-label`:
   Pull requests must have this label.
 * `--without-labels`:
@@ -1445,6 +1461,8 @@ Run Homebrew's unit and integration tests.
   Include tests that use the GitHub API and tests that use any of the taps for official external commands.
 * `--byebug`:
   Enable debugging using byebug.
+* `--changed`:
+  Only runs tests on files that were changed from the master branch.
 * `--only`:
   Run only *`test_script`*`_spec.rb`. Appending `:`*`line_number`* will start at a specific line.
 * `--seed`:
@@ -1460,6 +1478,8 @@ Check for typechecking errors using Sorbet.
   Silence all non-critical errors.
 * `--update`:
   Update RBI files.
+* `--all`:
+  Regenerate all RBI files rather than just updated gems.
 * `--suggest-typed`:
   Try upgrading `typed` sigils.
 * `--fail-if-not-changed`:
@@ -1748,7 +1768,7 @@ Otherwise, operate on `~/Library/LaunchAgents` (started at login).
 [`sudo`] `brew services run` (*`formula`*|`--all`)
 <br>Run the service *`formula`* without registering to launch at login (or boot).
 
-[`sudo`] `brew services start` (*`formula`*|`--all`)
+[`sudo`] `brew services start` (*`formula`*|`--all`|`--file=`)
 <br>Start the service *`formula`* immediately and register it to launch at login (or boot).
 
 [`sudo`] `brew services stop` (*`formula`*|`--all`)
@@ -1764,7 +1784,7 @@ Otherwise, operate on `~/Library/LaunchAgents` (started at login).
 <br>Remove all unused services.
 
 * `--file`:
-  Use the plist file from this location to `start` or `run` the service.
+  Use the service file from this location to `start` the service.
 * `--all`:
   Run *`subcommand`* on all services.
 * `--json`:
@@ -1918,7 +1938,7 @@ example, run `export HOMEBREW_NO_INSECURE_REDIRECT=1` rather than just
   *Default:* `native`.
 
 - `HOMEBREW_ARTIFACT_DOMAIN`
-  <br>Prefix all download URLs, including those for bottles, with this value. For example, `HOMEBREW_ARTIFACT_DOMAIN=http://localhost:8080` will cause a formula with the URL `https://example.com/foo.tar.gz` to instead download from `http://localhost:8080/example.com/foo.tar.gz`.
+  <br>Prefix all download URLs, including those for bottles, with this value. For example, `HOMEBREW_ARTIFACT_DOMAIN=http://localhost:8080` will cause a formula with the URL `https://example.com/foo.tar.gz` to instead download from `http://localhost:8080/https://example.com/foo.tar.gz`. Bottle URLs however, have their domain replaced with this prefix. This results in e.g. `https://ghcr.io/v2/homebrew/core/gettext/manifests/0.21` to instead be downloaded from `http://localhost:8080/v2/homebrew/core/gettext/manifests/0.21`
 
 - `HOMEBREW_AUTO_UPDATE_SECS`
   <br>Run `brew update` once every `HOMEBREW_AUTO_UPDATE_SECS` seconds before some commands, e.g. `brew install`, `brew upgrade` and `brew tap`. Alternatively, disable auto-update entirely with HOMEBREW_NO_AUTO_UPDATE.
@@ -1932,6 +1952,11 @@ example, run `export HOMEBREW_NO_INSECURE_REDIRECT=1` rather than just
   <br>Use this as the `bat` configuration file.
 
   *Default:* `$HOME/.config/bat/config`.
+
+- `HOMEBREW_BAT_THEME`
+  <br>Use this as the `bat` theme for syntax highlighting.
+
+  *Default:* `$BAT_THEME`.
 
 - `HOMEBREW_BOOTSNAP`
   <br>If set, use Bootsnap to speed up repeated `brew` calls. A no-op when using Homebrew's vendored, relocatable Ruby on macOS (as it doesn't work).
@@ -1957,9 +1982,7 @@ example, run `export HOMEBREW_NO_INSECURE_REDIRECT=1` rather than just
   *Default:* macOS: `$HOME/Library/Caches/Homebrew`, Linux: `$XDG_CACHE_HOME/Homebrew` or `$HOME/.cache/Homebrew`.
 
 - `HOMEBREW_CASK_OPTS`
-  <br>Append these options to all `cask` commands. All `--*dir` options, `--language`, `--require-sha`, `--no-quarantine` and `--no-binaries` are supported. For example, you might add something like the following to your `~/.profile`, `~/.bash_profile`, or `~/.zshenv`:
-
-    `export HOMEBREW_CASK_OPTS="--appdir=~/Applications --fontdir=/Library/Fonts"`
+  <br>Append these options to all `cask` commands. All `--*dir` options, `--language`, `--require-sha`, `--no-quarantine` and `--no-binaries` are supported. For example, you might add something like the following to your `~/.profile`, `~/.bash_profile`, or `~/.zshenv`:\n\n    `export HOMEBREW_CASK_OPTS="--appdir=~/Applications --fontdir=/Library/Fonts"`
 
 - `HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS`
   <br>If set, `brew install`, `brew upgrade` and `brew reinstall` will cleanup all formulae when this number of days has passed.
@@ -1981,6 +2004,11 @@ example, run `export HOMEBREW_NO_INSECURE_REDIRECT=1` rather than just
 
 - `HOMEBREW_CURLRC`
   <br>If set, do not pass `--disable` when invoking `curl`(1), which disables the use of `curlrc`.
+
+- `HOMEBREW_CURL_PATH`
+  <br>Linux only: Set this value to a new enough `curl` executable for Homebrew to use.
+
+  *Default:* `curl`.
 
 - `HOMEBREW_CURL_RETRIES`
   <br>Pass the given retry count to `--retry` when invoking `curl`(1).
@@ -2054,6 +2082,11 @@ example, run `export HOMEBREW_NO_INSECURE_REDIRECT=1` rather than just
 - `HOMEBREW_GIT_NAME`
   <br>Set the Git author and committer name to this value.
 
+- `HOMEBREW_GIT_PATH`
+  <br>Linux only: Set this value to a new enough `git` executable for Homebrew to use.
+
+  *Default:* `git`.
+
 - `HOMEBREW_INSTALL_BADGE`
   <br>Print this text before the installation summary of each successful build.
 
@@ -2067,7 +2100,7 @@ example, run `export HOMEBREW_NO_INSECURE_REDIRECT=1` rather than just
 - `HOMEBREW_LIVECHECK_WATCHLIST`
   <br>Consult this file for the list of formulae to check by default when no formula argument is passed to `brew livecheck`.
 
-  *Default:* `$HOME/.brew_livecheck_watchlist`.
+  *Default:* `$HOME/.brew_livecheck_watchlist`
 
 - `HOMEBREW_LOGS`
   <br>Use this directory to store log files.
@@ -2089,7 +2122,7 @@ example, run `export HOMEBREW_NO_INSECURE_REDIRECT=1` rather than just
   <br>If set, do not use Bootsnap to speed up repeated `brew` calls.
 
 - `HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK`
-  <br>If set, do not check for broken linkage of dependents or outdated dependents after installing, upgrading or reinstalling formulae. This will result in fewer dependents  (and their dependencies) being upgraded or reinstalled but may result in more breakage from running `brew install *`formula`*` or `brew upgrade *`formula`*`.
+  <br>If set, do not check for broken linkage of dependents or outdated dependents after installing, upgrading or reinstalling formulae. This will result in fewer dependents (and their dependencies) being upgraded or reinstalled but may result in more breakage from running `brew install *`formula`*` or `brew upgrade *`formula`*`.
 
 - `HOMEBREW_NO_CLEANUP_FORMULAE`
   <br>A comma-separated list of formulae. Homebrew will refuse to clean up a formula if it appears on this list.
@@ -2151,8 +2184,8 @@ example, run `export HOMEBREW_NO_INSECURE_REDIRECT=1` rather than just
 
   *Default:* macOS: `/private/tmp`, Linux: `/tmp`.
 
-- `HOMEBREW_UPDATE_REPORT_ONLY_INSTALLED`
-  <br>If set, `brew update` only lists updates to installed software.
+- `HOMEBREW_UPDATE_REPORT_ALL_FORMULAE`
+  <br>If set, `brew update` lists changes to all formulae and cask files rather than only showing when they are new and not installed or outdated and installed.
 
 - `HOMEBREW_UPDATE_TO_TAG`
   <br>If set, always use the latest stable tag (even if developer commands have been run).
@@ -2211,11 +2244,11 @@ Homebrew API: <https://rubydoc.brew.sh>
 
 Homebrew's Project Leader is Mike McQuaid.
 
-Homebrew's Project Leadership Committee is Issy Long, Jonathan Chang, Markus Reiter, Misty De Meo and Sean Molenaar.
+Homebrew's Project Leadership Committee is Issy Long, Jonathan Chang, Mike McQuaid, Misty De Méo and Sean Molenaar.
 
 Homebrew's Technical Steering Committee is Bo Anderson, FX Coudert, Michka Popoff, Mike McQuaid and Rylan Polster.
 
-Homebrew's other current maintainers are Alexander Bayandin, Bevan Kay, Branch Vincent, Caleb Xu, Carlo Cabrera, Connor, Daniel Nachun, Dawid Dziurla, Dustin Rodrigues, Eric Knibbe, George Adams, Maxim Belkin, Miccal Matthews, Michael Cho, Nanda H Krishna, Randall, Sam Ford, Shaun Jackman, Steve Peters, Thierry Moisan, Tom Schoonjans, Vítor Galvão and rui.
+Homebrew's other current maintainers are Alexander Bayandin, Bevan Kay, Branch Vincent, Caleb Xu, Carlo Cabrera, Daniel Nachun, Dawid Dziurla, Dustin Rodrigues, Eric Knibbe, George Adams, Markus Reiter, Maxim Belkin, Miccal Matthews, Michael Cho, Nanda H Krishna, Randall, Rui Chen, Sam Ford, Shaun Jackman, Steve Peters, Thierry Moisan and Vítor Galvão.
 
 Former maintainers with significant contributions include Claudia Pellegrino, Seeker, William Woodruff, Jan Viljanen, JCount, commitay, Dominyk Tiller, Tim Smith, Baptiste Fontaine, Xu Cheng, Martin Afanasjew, Brett Koonce, Charlie Sharpsteen, Jack Nagel, Adam Vandenberg, Andrew Janke, Alex Dunn, neutric, Tomasz Pajor, Uladzislau Shablinski, Alyssa Ross, ilovezfs, Chongyu Zhu and Homebrew's creator: Max Howell.
 

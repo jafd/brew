@@ -42,8 +42,8 @@ module Homebrew
       switch "--cask", "--casks",
              description: "Search online and locally for casks."
       switch "--desc",
-             description: "Search for formulae with a description matching <text> and casks with "\
-                          "a name matching <text>."
+             description: "Search for formulae with a description matching <text> and casks with " \
+                          "a name or description matching <text>."
       switch "--pull-request",
              description: "Search for GitHub pull requests containing <text>."
       switch "--open",

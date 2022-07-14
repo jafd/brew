@@ -58,22 +58,22 @@ module Homebrew
       switch "--no-rebuild",
              description: "If the formula specifies a rebuild version, remove it from the generated DSL."
       switch "--keep-old",
-             description: "If the formula specifies a rebuild version, attempt to preserve its value in the "\
+             description: "If the formula specifies a rebuild version, attempt to preserve its value in the " \
                           "generated DSL."
       switch "--json",
-             description: "Write bottle information to a JSON file, which can be used as the value for "\
+             description: "Write bottle information to a JSON file, which can be used as the value for " \
                           "`--merge`."
       switch "--merge",
-             description: "Generate an updated bottle block for a formula and optionally merge it into the "\
-                          "formula file. Instead of a formula name, requires the path to a JSON file generated with "\
-                          "`brew bottle --json` <formula>."
+             description: "Generate an updated bottle block for a formula and optionally merge it into the " \
+                          "formula file. Instead of a formula name, requires the path to a JSON file generated " \
+                          "with `brew bottle --json` <formula>."
       switch "--write",
              depends_on:  "--merge",
-             description: "Write changes to the formula file. A new commit will be generated unless "\
+             description: "Write changes to the formula file. A new commit will be generated unless " \
                           "`--no-commit` is passed."
       switch "--no-commit",
              depends_on:  "--write",
-             description: "When passed with `--write`, a new commit will not generated after writing changes "\
+             description: "When passed with `--write`, a new commit will not generated after writing changes " \
                           "to the formula file."
       switch "--only-json-tab",
              depends_on:  "--json",
@@ -83,7 +83,7 @@ module Homebrew
       flag   "--root-url=",
              description: "Use the specified <URL> as the root of the bottle's URL instead of Homebrew's default."
       flag   "--root-url-using=",
-             description: "Use the specified download strategy class for downloading the bottle's URL instead of "\
+             description: "Use the specified download strategy class for downloading the bottle's URL instead of " \
                           "Homebrew's default."
 
       conflicts "--no-rebuild", "--keep-old"
@@ -100,15 +100,8 @@ module Homebrew
       return merge(args: args)
     end
 
-    ensure_relocation_formulae_installed! unless args.skip_relocation?
     args.named.to_resolved_formulae(uniq: false).each do |f|
       bottle_formula f, args: args
-    end
-  end
-
-  def ensure_relocation_formulae_installed!
-    Keg.relocation_formulae.each do |f|
-      ensure_formula_installed!(f, latest: true)
     end
   end
 
@@ -268,6 +261,7 @@ module Homebrew
   def formula_ignores(f)
     ignores = []
     cellar_regex = Regexp.escape(HOMEBREW_CELLAR)
+    prefix_regex = Regexp.escape(HOMEBREW_PREFIX)
 
     # Ignore matches to go keg, because all go binaries are statically linked.
     any_go_deps = f.deps.any? do |dep|
@@ -282,7 +276,7 @@ module Homebrew
     # On Linux, GCC installation can be moved so long as the whole directory tree is moved together:
     # https://gcc-help.gcc.gnu.narkive.com/GnwuCA7l/moving-gcc-from-the-installation-path-is-it-allowed.
     when Version.formula_optionally_versioned_regex(:gcc)
-      %r{#{cellar_regex}/gcc} if OS.linux?
+      Regexp.union(%r{#{cellar_regex}/gcc}, %r{#{prefix_regex}/opt/gcc}) if OS.linux?
     # binutils is relocatable for the same reason: https://github.com/Homebrew/brew/pull/11899#issuecomment-906804451.
     when Version.formula_optionally_versioned_regex(:binutils)
       %r{#{cellar_regex}/binutils} if OS.linux?
@@ -306,12 +300,6 @@ module Homebrew
       tap = CoreTap.instance
     end
 
-    if f.bottle_disabled?
-      ofail "Formula has disabled bottle: #{f.full_name}"
-      puts f.bottle_disable_reason
-      return
-    end
-
     return ofail "Formula has no stable version: #{f.full_name}" unless f.stable
 
     bottle_tag, rebuild = if local_bottle_json
@@ -332,7 +320,7 @@ module Homebrew
     else
       ohai "Determining #{f.full_name} bottle rebuild..."
       FormulaVersions.new(f).formula_at_revision("origin/HEAD") do |upstream_f|
-        if f.pkg_version == upstream_f.pkg_version && !upstream_f.bottle_unneeded?
+        if f.pkg_version == upstream_f.pkg_version
           upstream_f.bottle_specification.rebuild + 1
         else
           0

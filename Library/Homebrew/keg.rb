@@ -446,7 +446,7 @@ class Keg
            /^gdk-pixbuf/,
            "ghc",
            /^gio/,
-           "lua",
+           /^lua/,
            /^mecab/,
            /^node/,
            /^ocaml/,
@@ -528,6 +528,8 @@ class Keg
   def binary_executable_or_library_files
     elf_files
   end
+
+  def codesign_patched_binary(file); end
 
   private
 

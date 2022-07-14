@@ -22,18 +22,22 @@ module Homebrew
         first search, making that search slower than subsequent ones.
       EOS
       switch "-s", "--search",
-             description: "Search both names and descriptions for <text>. If <text> is flanked by "\
+             description: "Search both names and descriptions for <text>. If <text> is flanked by " \
                           "slashes, it is interpreted as a regular expression."
       switch "-n", "--name",
-             description: "Search just names for <text>. If <text> is flanked by slashes, it is "\
+             description: "Search just names for <text>. If <text> is flanked by slashes, it is " \
                           "interpreted as a regular expression."
       switch "-d", "--description",
-             description: "Search just descriptions for <text>. If <text> is flanked by slashes, "\
+             description: "Search just descriptions for <text>. If <text> is flanked by slashes, " \
                           "it is interpreted as a regular expression."
+      switch "--formula", "--formulae",
+             description: "Treat all named arguments as formulae."
+      switch "--cask", "--casks",
+             description: "Treat all named arguments as casks."
 
       conflicts "--search", "--name", "--description"
 
-      named_args [:formula, :text_or_regex], min: 1
+      named_args [:formula, :cask, :text_or_regex], min: 1
     end
   end
 
@@ -48,19 +52,35 @@ module Homebrew
       :desc
     end
 
-    results = if search_type.nil?
+    if search_type.blank?
       desc = {}
-      args.named.to_formulae.each { |f| desc[f.full_name] = f.desc }
-      Descriptions.new(desc)
+      args.named.to_formulae_and_casks.each do |formula_or_cask|
+        if formula_or_cask.is_a? Formula
+          desc[formula_or_cask.full_name] = formula_or_cask.desc
+        else
+          description = formula_or_cask.desc.presence || Formatter.warning("[no description]")
+          desc[formula_or_cask.full_name] = "(#{formula_or_cask.name.join(", ")}) #{description}"
+        end
+      end
+      Descriptions.new(desc).print
     else
       query = args.named.join(" ")
       string_or_regex = query_regexp(query)
-      CacheStoreDatabase.use(:descriptions) do |db|
-        cache_store = DescriptionCacheStore.new(db)
-        Descriptions.search(string_or_regex, search_type, cache_store)
+      unless args.cask?
+        ohai "Formulae"
+        CacheStoreDatabase.use(:descriptions) do |db|
+          cache_store = DescriptionCacheStore.new(db)
+          Descriptions.search(string_or_regex, search_type, cache_store).print
+        end
+      end
+      unless args.formula?
+        puts unless args.cask?
+        ohai "Casks"
+        CacheStoreDatabase.use(:cask_descriptions) do |db|
+          cache_store = CaskDescriptionCacheStore.new(db)
+          Descriptions.search(string_or_regex, search_type, cache_store).print
+        end
       end
     end
-
-    results.print
   end
 end

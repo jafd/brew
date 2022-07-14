@@ -42,7 +42,7 @@ module Homebrew
       switch "--write", hidden: true
       switch "--commit",
              depends_on:  "--write-only",
-             description: "When passed with `--write-only`, generate a new commit after writing changes "\
+             description: "When passed with `--write-only`, generate a new commit after writing changes " \
                           "to the formula file."
       switch "--no-audit",
              description: "Don't run `brew audit` before opening the PR."
@@ -55,18 +55,18 @@ module Homebrew
       switch "--no-fork",
              description: "Don't try to fork the repository."
       comma_array "--mirror",
-                  description: "Use the specified <URL> as a mirror URL. If <URL> is a comma-separated list "\
+                  description: "Use the specified <URL> as a mirror URL. If <URL> is a comma-separated list " \
                                "of URLs, multiple mirrors will be added."
       flag   "--fork-org=",
              description: "Use the specified GitHub organization for forking."
       flag   "--version=",
-             description: "Use the specified <version> to override the value parsed from the URL or tag. Note "\
-                          "that `--version=0` can be used to delete an existing version override from a "\
+             description: "Use the specified <version> to override the value parsed from the URL or tag. Note " \
+                          "that `--version=0` can be used to delete an existing version override from a " \
                           "formula if it has become redundant."
       flag   "--message=",
              description: "Append <message> to the default pull request message."
       flag   "--url=",
-             description: "Specify the <URL> for the new download. If a <URL> is specified, the <SHA-256> "\
+             description: "Specify the <URL> for the new download. If a <URL> is specified, the <SHA-256> " \
                           "checksum of the new download should also be specified."
       flag   "--sha256=",
              depends_on:  "--url=",
@@ -74,10 +74,17 @@ module Homebrew
       flag   "--tag=",
              description: "Specify the new git commit <tag> for the formula."
       flag   "--revision=",
-             description: "Specify the new commit <revision> corresponding to the specified git <tag> "\
+             description: "Specify the new commit <revision> corresponding to the specified git <tag> " \
                           "or specified <version>."
       switch "-f", "--force",
              description: "Ignore duplicate open PRs. Remove all mirrors if `--mirror` was not specified."
+      flag   "--python-package-name=",
+             description: "Use the specified <package-name> when finding Python resources for <formula>. " \
+                          "If no package name is specified, it will be inferred from the formula's stable URL."
+      comma_array "--python-extra-packages=",
+                  description: "Include these additional Python packages when finding resources."
+      comma_array "--python-exclude-packages=",
+                  description: "Exclude these Python packages when finding resources."
 
       conflicts "--dry-run", "--write-only"
       conflicts "--dry-run", "--write"
@@ -93,7 +100,7 @@ module Homebrew
   def bump_formula_pr
     args = bump_formula_pr_args.parse
 
-    odeprecated "`brew bump-formula-pr --write`", "`brew bump-formula-pr --write-only`" if args.write?
+    odisabled "`brew bump-formula-pr --write`", "`brew bump-formula-pr --write-only`" if args.write?
 
     if args.revision.present? && args.tag.nil? && args.version.nil?
       raise UsageError, "`--revision` must be passed with either `--tag` or `--version`!"
@@ -101,7 +108,7 @@ module Homebrew
 
     # As this command is simplifying user-run commands then let's just use a
     # user path, too.
-    ENV["PATH"] = ENV["HOMEBREW_PATH"]
+    ENV["PATH"] = PATH.new(ORIGINAL_PATHS).to_s
 
     # Use the user's browser, too.
     ENV["BROWSER"] = Homebrew::EnvConfig.browser
@@ -236,7 +243,7 @@ module Homebrew
     elsif new_tag.present?
       [
         [
-          formula_spec.specs[:tag],
+          /#{formula_spec.specs[:tag]}(?=")/,
           new_tag,
         ],
         [
@@ -268,7 +275,7 @@ module Homebrew
 
     if new_mirrors.present?
       replacement_pairs << [
-        /^( +)(url "#{Regexp.escape(new_url)}"\n)/m,
+        /^( +)(url "#{Regexp.escape(new_url)}"[^\n]*?\n)/m,
         "\\1\\2\\1mirror \"#{new_mirrors.join("\"\n\\1mirror \"")}\"\n",
       ]
     end
@@ -276,8 +283,8 @@ module Homebrew
     if forced_version && new_version != "0"
       replacement_pairs << if old_contents.include?("version \"#{old_formula_version}\"")
         [
-          old_formula_version.to_s,
-          new_version,
+          "version \"#{old_formula_version}\"",
+          "version \"#{new_version}\"",
         ]
       elsif new_mirrors.present?
         [
@@ -286,7 +293,7 @@ module Homebrew
         ]
       elsif new_url.present?
         [
-          /^( +)(url "#{Regexp.escape(new_url)}"\n)/m,
+          /^( +)(url "#{Regexp.escape(new_url)}"[^\n]*?\n)/m,
           "\\1\\2\\1version \"#{new_version}\"\n",
         ]
       elsif new_revision.present?
@@ -329,8 +336,13 @@ module Homebrew
     end
 
     unless args.dry_run?
-      resources_checked = PyPI.update_python_resources! formula, version: new_formula_version,
-                                                        silent: args.quiet?, ignore_non_pypi_packages: true
+      resources_checked = PyPI.update_python_resources! formula,
+                                                        version:                  new_formula_version,
+                                                        package_name:             args.python_package_name,
+                                                        extra_packages:           args.python_extra_packages,
+                                                        exclude_packages:         args.python_exclude_packages,
+                                                        silent:                   args.quiet?,
+                                                        ignore_non_pypi_packages: true
     end
 
     run_audit(formula, alias_rename, old_contents, args: args)
@@ -383,13 +395,13 @@ module Homebrew
 
   def determine_mirror(url)
     case url
-    when %r{.*ftp.gnu.org/gnu.*}
+    when %r{.*ftp\.gnu\.org/gnu.*}
       url.sub "ftp.gnu.org/gnu", "ftpmirror.gnu.org"
-    when %r{.*download.savannah.gnu.org/*}
+    when %r{.*download\.savannah\.gnu\.org/*}
       url.sub "download.savannah.gnu.org", "download-mirror.savannah.gnu.org"
-    when %r{.*www.apache.org/dyn/closer.lua\?path=.*}
+    when %r{.*www\.apache\.org/dyn/closer\.lua\?path=.*}
       url.sub "www.apache.org/dyn/closer.lua?path=", "archive.apache.org/dist/"
-    when %r{.*mirrors.ocf.berkeley.edu/debian.*}
+    when %r{.*mirrors\.ocf\.berkeley\.edu/debian.*}
       url.sub "mirrors.ocf.berkeley.edu/debian", "mirrorservice.org/sites/ftp.debian.org/debian"
     end
   end

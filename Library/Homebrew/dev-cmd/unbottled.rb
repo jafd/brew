@@ -114,7 +114,7 @@ module Homebrew
       end.compact
       @sort = " (sorted by installs in the last 90 days; top 10,000 only)"
 
-      all_formulae = Formula
+      all_formulae = Formula.all
     end
 
     [formulae, all_formulae, formula_installs]
@@ -147,7 +147,6 @@ module Homebrew
 
     formulae.each do |f|
       next if f.bottle_specification.tag?(@bottle_tag)
-      next if f.bottle_unneeded?
 
       unbottled_formulae += 1
     end
@@ -169,7 +168,7 @@ module Homebrew
 
       requirements = f.recursive_requirements
       if @bottle_tag.linux?
-        if requirements.any?(MacOSRequirement)
+        if requirements.any? { |r| r.is_a?(MacOSRequirement) && !r.version }
           puts "#{Tty.bold}#{Tty.red}#{name}#{Tty.reset}: requires macOS" if any_named_args
           next
         end
@@ -200,23 +199,13 @@ module Homebrew
         end
       end
 
-      if f.bottle_unneeded? || f.bottle_disabled?
-        reason = if f.bottle_unneeded?
-          "unneeded"
-        else
-          "disabled"
-        end
-        puts "#{Tty.bold}#{Tty.red}#{name}#{Tty.reset}: bottle #{reason}" if any_named_args
-        next
-      end
-
       if f.bottle_specification.tag?(@bottle_tag, no_older_versions: true)
         puts "#{Tty.bold}#{Tty.green}#{name}#{Tty.reset}: already bottled" if any_named_args
         next
       end
 
       deps = Array(deps_hash[f.name]).reject do |dep|
-        dep.bottle_specification.tag?(@bottle_tag, no_older_versions: true) || dep.bottle_unneeded?
+        dep.bottle_specification.tag?(@bottle_tag, no_older_versions: true)
       end
 
       if deps.blank?

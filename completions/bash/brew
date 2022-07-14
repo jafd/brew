@@ -498,6 +498,9 @@ _brew_bump_formula_pr() {
       --no-browse
       --no-fork
       --online
+      --python-exclude-packages
+      --python-extra-packages
+      --python-package-name
       --quiet
       --revision
       --sha256
@@ -741,8 +744,10 @@ _brew_desc() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --cask
       --debug
       --description
+      --formula
       --help
       --name
       --quiet
@@ -754,6 +759,7 @@ _brew_desc() {
     *)
   esac
   __brew_complete_formulae
+  __brew_complete_casks
 }
 
 _brew_developer() {
@@ -1096,6 +1102,7 @@ _brew_instal() {
       --verbose
       --vst-plugindir
       --vst3-plugindir
+      --zap
       "
       return
       ;;
@@ -1153,6 +1160,7 @@ _brew_install() {
       --verbose
       --vst-plugindir
       --vst3-plugindir
+      --zap
       "
       return
       ;;
@@ -1544,6 +1552,7 @@ _brew_pr_automerge() {
       --with-label
       --without-approval
       --without-labels
+      --workflow
       "
       return
       ;;
@@ -1705,6 +1714,7 @@ _brew_reinstall() {
       --verbose
       --vst-plugindir
       --vst3-plugindir
+      --zap
       "
       return
       ;;
@@ -1899,6 +1909,7 @@ _brew_tap() {
       --force-auto-update
       --help
       --list-pinned
+      --no-force-auto-update
       --quiet
       --repair
       --verbose
@@ -1955,6 +1966,7 @@ _brew_tc() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --all
       --debug
       --dir
       --fail-if-not-changed
@@ -2000,6 +2012,7 @@ _brew_tests() {
     -*)
       __brewcomp "
       --byebug
+      --changed
       --coverage
       --debug
       --generic
@@ -2022,6 +2035,7 @@ _brew_typecheck() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --all
       --debug
       --dir
       --fail-if-not-changed
@@ -2185,11 +2199,12 @@ _brew_up() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --auto-update
       --debug
       --force
       --help
       --merge
-      --preinstall
+      --quiet
       --verbose
       "
       return
@@ -2203,11 +2218,12 @@ _brew_update() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --auto-update
       --debug
       --force
       --help
       --merge
-      --preinstall
+      --quiet
       --verbose
       "
       return
@@ -2278,10 +2294,10 @@ _brew_update_report() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --auto-update
       --debug
       --force
       --help
-      --preinstall
       --quiet
       --verbose
       "

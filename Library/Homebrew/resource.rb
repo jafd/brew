@@ -5,7 +5,8 @@ require "download_strategy"
 require "checksum"
 require "version"
 require "mktemp"
-require "extend/on_os"
+require "livecheck"
+require "extend/on_system"
 
 # Resource is the fundamental representation of an external resource. The
 # primary formula download, along with other declared resources, are instances
@@ -17,7 +18,7 @@ class Resource
 
   include Context
   include FileUtils
-  include OnOS
+  include OnSystem::MacOSAndLinux
 
   attr_reader :mirrors, :specs, :using, :source_modified_time, :patches, :owner
   attr_writer :version
@@ -36,6 +37,8 @@ class Resource
     @checksum = nil
     @using = nil
     @patches = []
+    @livecheck = nil
+    @livecheckable = false
     instance_eval(&block) if block
   end
 
@@ -118,6 +121,7 @@ class Resource
   # is a {ResourceStageContext}.
   # A target or a block must be given, but not both.
   def unpack(target = nil)
+    current_working_directory = Pathname.pwd
     mktemp(download_name) do |staging|
       downloader.stage do
         @source_modified_time = downloader.source_modified_time
@@ -126,6 +130,7 @@ class Resource
           yield ResourceStageContext.new(self, staging)
         elsif target
           target = Pathname(target)
+          target = current_working_directory/target if target.relative?
           target.install Pathname.pwd.children
         end
       end
@@ -166,6 +171,32 @@ class Resource
       For your reference, the checksum is:
         sha256 "#{fn.sha256}"
     EOS
+  end
+
+  # @!attribute [w] livecheck
+  # {Livecheck} can be used to check for newer versions of the software.
+  # This method evaluates the DSL specified in the livecheck block of the
+  # {Resource} (if it exists) and sets the instance variables of a {Livecheck}
+  # object accordingly. This is used by `brew livecheck` to check for newer
+  # versions of the software.
+  #
+  # <pre>livecheck do
+  #   url "https://example.com/foo/releases"
+  #   regex /foo-(\d+(?:\.\d+)+)\.tar/
+  # end</pre>
+  def livecheck(&block)
+    @livecheck ||= Livecheck.new(self) if block
+    return @livecheck unless block
+
+    @livecheckable = true
+    @livecheck.instance_eval(&block)
+  end
+
+  # Whether a livecheck specification is defined or not.
+  # It returns true when a livecheck block is present in the {Resource} and
+  # false otherwise, and is used by livecheck.
+  def livecheckable?
+    @livecheckable == true
   end
 
   def sha256(val)

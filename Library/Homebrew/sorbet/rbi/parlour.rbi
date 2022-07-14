@@ -129,13 +129,6 @@ module Cask
     def token_conflicts?; end
   end
 
-  class DSL
-    class Caveats < Base
-      sig { returns(T::Boolean) }
-      def discontinued?; end
-    end
-  end
-
   class Installer
     sig { returns(T::Boolean) }
     def binaries?; end
@@ -159,6 +152,9 @@ module Cask
     def verbose?; end
 
     sig { returns(T::Boolean) }
+    def zap?; end
+
+    sig { returns(T::Boolean) }
     def installed_as_dependency?; end
 
     sig { returns(T::Boolean) }
@@ -166,5 +162,15 @@ module Cask
 
     sig { returns(T::Boolean) }
     def quiet?; end
+  end
+
+  class DSL
+    class Caveats < Base
+      sig { returns(T::Boolean) }
+      def discontinued?; end
+    end
+
+    sig { returns(T::Boolean) }
+    def on_system_blocks_exist?; end
   end
 end

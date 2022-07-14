@@ -22,7 +22,7 @@ module Homebrew
       switch "--overwrite",
              description: "Delete files that already exist in the prefix while linking."
       switch "-n", "--dry-run",
-             description: "List files which would be linked or deleted by "\
+             description: "List files which would be linked or deleted by " \
                           "`brew link --overwrite` without actually linking or deleting any files."
       switch "-f", "--force",
              description: "Allow keg-only formulae to be linked."
@@ -84,7 +84,7 @@ module Homebrew
       formula = begin
         keg.to_formula
       rescue FormulaUnavailableError
-        # Not all kegs may belong to formulae e.g. with `brew diy`
+        # Not all kegs may belong to formulae
         nil
       end
 

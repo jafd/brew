@@ -21,7 +21,7 @@ module Homebrew
         an issue; just ignore this.
       EOS
       switch "--list-checks",
-             description: "List all audit methods, which can be run individually "\
+             description: "List all audit methods, which can be run individually " \
                           "if provided as arguments."
       switch "-D", "--audit-debug",
              description: "Enable debugging and profiling of audit methods."
@@ -48,7 +48,7 @@ module Homebrew
         check_missing_deps
       ]
       methods = (checks.all - slow_checks) + slow_checks
-      methods -= checks.cask_checks if Cask::Caskroom.casks.blank?
+      methods -= checks.cask_checks unless Cask::Caskroom.any_casks_installed?
     else
       methods = args.named
     end
