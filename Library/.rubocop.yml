@@ -59,6 +59,10 @@ FormulaAuditStrict:
 Homebrew:
   Enabled: true
 
+# only used internally
+Homebrew/MoveToExtendOS:
+  Enabled: false
+
 # makes DSL usage ugly.
 Layout/SpaceBeforeBrackets:
   Exclude:
@@ -371,8 +375,10 @@ Metrics/PerceivedComplexity:
 # allow those that are standard
 # TODO: try to remove some of these
 Naming/MethodParameterName:
+  inherit_mode:
+    merge:
+      - AllowedNames
   AllowedNames:
-    - "_"
     - "a"
     - "b"
     - "cc"
@@ -384,14 +390,12 @@ Naming/MethodParameterName:
     - "ff"
     - "fn"
     - "id"
-    - "io"
     - "o"
     - "p"
     - "pr"
     - "r"
     - "rb"
     - "s"
-    - "to"
     - "v"
 
 # GitHub diff UI wraps beyond 118 characters

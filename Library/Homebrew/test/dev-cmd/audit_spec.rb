@@ -150,7 +150,7 @@ module Homebrew
         RUBY
 
         fa.audit_license
-        expect(fa.problems.first[:message]).to match <<~EOS
+        expect(fa.problems.first[:message]).to eq <<~EOS
           Formula foo contains deprecated SPDX licenses: ["GPL-1.0"].
           You may need to add `-only` or `-or-later` for GNU licenses (e.g. `GPL`, `LGPL`, `AGPL`, `GFDL`).
           For a list of valid licenses check: https://spdx.org/licenses/
@@ -196,7 +196,7 @@ module Homebrew
         RUBY
 
         fa.audit_license
-        expect(fa.problems.first[:message]).to match <<~EOS
+        expect(fa.problems.first[:message]).to eq <<~EOS
           Formula foo contains deprecated SPDX licenses: ["GPL-1.0"].
           You may need to add `-only` or `-or-later` for GNU licenses (e.g. `GPL`, `LGPL`, `AGPL`, `GFDL`).
           For a list of valid licenses check: https://spdx.org/licenses/
@@ -927,7 +927,7 @@ module Homebrew
 
         tap_path.cd do
           system "git", "fetch"
-          system "git", "reset", "--hard", "origin/master"
+          system "git", "reset", "--hard", "origin/HEAD"
         end
       end
 
@@ -1202,6 +1202,9 @@ module Homebrew
       end
 
       specify "it warns when another formula does not have a symmetric conflict" do
+        stub_formula_loader formula("gcc") { url "gcc-1.0" }
+        stub_formula_loader formula("glibc") { url "glibc-1.0" }
+
         foo = formula("foo") do
           url "https://brew.sh/foo-1.0.tgz"
         end

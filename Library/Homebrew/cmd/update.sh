@@ -45,6 +45,7 @@ git_init_if_necessary() {
     trap '{ rm -rf .git; exit 1; }' EXIT
     git init
     git config --bool core.autocrlf false
+    git config --bool core.symlinks true
     if [[ "${HOMEBREW_BREW_DEFAULT_GIT_REMOTE}" != "${HOMEBREW_BREW_GIT_REMOTE}" ]]
     then
       echo "HOMEBREW_BREW_GIT_REMOTE set: using ${HOMEBREW_BREW_GIT_REMOTE} for Homebrew/brew Git remote URL."
@@ -67,6 +68,7 @@ git_init_if_necessary() {
     trap '{ rm -rf .git; exit 1; }' EXIT
     git init
     git config --bool core.autocrlf false
+    git config --bool core.symlinks true
     if [[ "${HOMEBREW_CORE_DEFAULT_GIT_REMOTE}" != "${HOMEBREW_CORE_GIT_REMOTE}" ]]
     then
       echo "HOMEBREW_CORE_GIT_REMOTE set: using ${HOMEBREW_CORE_GIT_REMOTE} for Homebrew/core Git remote URL."
@@ -269,7 +271,10 @@ EOS
   export HOMEBREW_UPDATE_BEFORE"${TAP_VAR}"="${INITIAL_REVISION}"
 
   # ensure we don't munge line endings on checkout
-  git config core.autocrlf false
+  git config --bool core.autocrlf false
+
+  # make sure symlinks are saved as-is
+  git config --bool core.symlinks true
 
   if [[ "${DIR}" == "${HOMEBREW_CORE_REPOSITORY}" && -n "${HOMEBREW_LINUXBREW_CORE_MIGRATION}" ]]
   then
@@ -547,7 +552,7 @@ EOS
   for DIR in "${HOMEBREW_REPOSITORY}" "${HOMEBREW_LIBRARY}"/Taps/*/*
   do
     if [[ -n "${HOMEBREW_INSTALL_FROM_API}" ]] &&
-       [[ -n "${HOMEBREW_UPDATE_AUTO}" ]] &&
+       [[ -z "${HOMEBREW_DEVELOPER}" || -n "${HOMEBREW_UPDATE_AUTO}" ]] &&
        [[ "${DIR}" == "${HOMEBREW_CORE_REPOSITORY}" ]]
     then
       continue
@@ -555,6 +560,9 @@ EOS
 
     [[ -d "${DIR}/.git" ]] || continue
     cd "${DIR}" || continue
+
+    # Git's fsmonitor prevents the release of our locks
+    git config --bool core.fsmonitor false
 
     if ! git config --local --get remote.origin.url &>/dev/null
     then
@@ -603,13 +611,13 @@ EOS
           # Only try to `git fetch` when the upstream tags have changed
           # (so the API does not return 304: unmodified).
           GITHUB_API_ETAG="$(sed -n 's/^ETag: "\([a-f0-9]\{32\}\)".*/\1/p' ".git/GITHUB_HEADERS" 2>/dev/null)"
-          GITHUB_API_ACCEPT="application/vnd.github.v3+json"
+          GITHUB_API_ACCEPT="application/vnd.github+json"
           GITHUB_API_ENDPOINT="tags"
         else
           # Only try to `git fetch` when the upstream branch is at a different SHA
           # (so the API does not return 304: unmodified).
           GITHUB_API_ETAG="$(git rev-parse "refs/remotes/origin/${UPSTREAM_BRANCH_DIR}")"
-          GITHUB_API_ACCEPT="application/vnd.github.v3.sha"
+          GITHUB_API_ACCEPT="application/vnd.github.sha"
           GITHUB_API_ENDPOINT="commits/${UPSTREAM_BRANCH_DIR}"
         fi
 
@@ -702,6 +710,7 @@ EOS
   for DIR in "${HOMEBREW_REPOSITORY}" "${HOMEBREW_LIBRARY}"/Taps/*/*
   do
     if [[ -n "${HOMEBREW_INSTALL_FROM_API}" ]] &&
+       [[ -z "${HOMEBREW_DEVELOPER}" || -n "${HOMEBREW_UPDATE_AUTO}" ]] &&
        [[ "${DIR}" == "${HOMEBREW_CORE_REPOSITORY}" ||
           "${DIR}" == "${HOMEBREW_LIBRARY}/Taps/homebrew/homebrew-cask" ]]
     then
@@ -745,15 +754,28 @@ EOS
   if [[ -n "${HOMEBREW_INSTALL_FROM_API}" ]]
   then
     mkdir -p "${HOMEBREW_CACHE}/api"
-    # TODO: use --header If-Modified-Since
+    if [[ -f "${HOMEBREW_CACHE}/api/formula.json" ]]
+    then
+      INITIAL_JSON_BYTESIZE="$(wc -c "${HOMEBREW_CACHE}"/api/formula.json)"
+    fi
     curl \
       "${CURL_DISABLE_CURLRC_ARGS[@]}" \
       --fail --compressed --silent --max-time 5 \
       --location --remote-time --output "${HOMEBREW_CACHE}/api/formula.json" \
+      --time-cond "${HOMEBREW_CACHE}/api/formula.json" \
       --user-agent "${HOMEBREW_USER_AGENT_CURL}" \
       "https://formulae.brew.sh/api/formula.json"
-    # TODO: we probably want to print an error if this fails.
-    # TODO: set HOMEBREW_UPDATED or HOMEBREW_UPDATE_FAILED
+    curl_exit_code=$?
+    if [[ ${curl_exit_code} -eq 0 ]]
+    then
+      CURRENT_JSON_BYTESIZE="$(wc -c "${HOMEBREW_CACHE}"/api/formula.json)"
+      if [[ "${INITIAL_JSON_BYTESIZE}" != "${CURRENT_JSON_BYTESIZE}" ]]
+      then
+        HOMEBREW_UPDATED="1"
+      fi
+    else
+      echo "Failed to download formula.json!" >>"${update_failed_file}"
+    fi
   fi
 
   safe_cd "${HOMEBREW_REPOSITORY}"

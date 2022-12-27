@@ -106,13 +106,17 @@ describe Cask::Cmd::List, :cask do
             "outdated": false,
             "sha256": "67cdb8a02803ef37fdbf7e0be205863172e41a561ca446cd84f0d7ab35a99d94",
             "artifacts": [
-              [
-                "Caffeine.app"
-              ],
               {
-                "trash": "$HOME/support/fixtures/cask/caffeine/org.example.caffeine.plist",
-                "signal": {
-                }
+                "app": [
+                  "Caffeine.app"
+                ]
+              },
+              {
+                "zap": [
+                  {
+                    "trash": "$HOME/support/fixtures/cask/caffeine/org.example.caffeine.plist"
+                  }
+                ]
               }
             ],
             "caveats": null,
@@ -120,9 +124,7 @@ describe Cask::Cmd::List, :cask do
             },
             "conflicts_with": null,
             "container": null,
-            "auto_updates": null,
-            "variations": {
-            }
+            "auto_updates": null
           },
           {
             "token": "local-transmission",
@@ -142,18 +144,18 @@ describe Cask::Cmd::List, :cask do
             "outdated": false,
             "sha256": "e44ffa103fbf83f55c8d0b1bea309a43b2880798dae8620b1ee8da5e1095ec68",
             "artifacts": [
-              [
-                "Transmission.app"
-              ]
+              {
+                "app": [
+                  "Transmission.app"
+                ]
+              }
             ],
             "caveats": null,
             "depends_on": {
             },
             "conflicts_with": null,
             "container": null,
-            "auto_updates": null,
-            "variations": {
-            }
+            "auto_updates": null
           },
           {
             "token": "multiple-versions",
@@ -164,7 +166,7 @@ describe Cask::Cmd::List, :cask do
             ],
             "desc": null,
             "homepage": "https://brew.sh/",
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/1.2.3/arm.zip",
+            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/darwin-arm64/1.2.3/arm.zip",
             "appcast": null,
             "version": "1.2.3",
             "versions": {
@@ -176,41 +178,18 @@ describe Cask::Cmd::List, :cask do
             "outdated": false,
             "sha256": "67cdb8a02803ef37fdbf7e0be205863172e41a561ca446cd84f0d7ab35a99d94",
             "artifacts": [
-              [
-                "Caffeine.app"
-              ]
+              {
+                "app": [
+                  "Caffeine.app"
+                ]
+              }
             ],
             "caveats": null,
             "depends_on": {
             },
             "conflicts_with": null,
             "container": null,
-            "auto_updates": null,
-            "variations": {
-              "arm_big_sur": {
-                "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/1.2.0/arm.zip",
-                "version": "1.2.0",
-                "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-              },
-              "intel_monterey": {
-                "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/1.2.3/intel.zip"
-              },
-              "intel_big_sur": {
-                "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/1.2.0/intel.zip",
-                "version": "1.2.0",
-                "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-              },
-              "intel_catalina": {
-                "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/1.0.0/intel.zip",
-                "version": "1.0.0",
-                "sha256": "1866dfa833b123bb8fe7fa7185ebf24d28d300d0643d75798bc23730af734216"
-              },
-              "intel_mojave": {
-                "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/1.0.0/intel.zip",
-                "version": "1.0.0",
-                "sha256": "1866dfa833b123bb8fe7fa7185ebf24d28d300d0643d75798bc23730af734216"
-              }
-            }
+            "auto_updates": null
           },
           {
             "token": "third-party-cask",
@@ -230,18 +209,18 @@ describe Cask::Cmd::List, :cask do
             "outdated": false,
             "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b",
             "artifacts": [
-              [
-                "ThirdParty.app"
-              ]
+              {
+                "app": [
+                  "ThirdParty.app"
+                ]
+              }
             ],
             "caveats": null,
             "depends_on": {
             },
             "conflicts_with": null,
             "container": null,
-            "auto_updates": null,
-            "variations": {
-            }
+            "auto_updates": null
           }
         ]
       EOS

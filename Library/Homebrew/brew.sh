@@ -13,26 +13,6 @@ case "${HOMEBREW_SYSTEM}" in
   Linux) HOMEBREW_LINUX="1" ;;
 esac
 
-if [[ "${HOMEBREW_MACOS}" == "1" ]] &&
-   [[ "$(sysctl -n hw.optional.arm64 2>/dev/null)" == "1" ]]
-then
-  # used in vendor-install.sh
-  # shellcheck disable=SC2034
-  HOMEBREW_PHYSICAL_PROCESSOR="arm64"
-  HOMEBREW_ROSETTA="$(sysctl -n sysctl.proc_translated)"
-
-  # If we're running under macOS Rosetta 2, and it was requested by setting
-  # HOMEBREW_CHANGE_ARCH_TO_ARM (for example in CI), then we re-exec this
-  # same file under the native architecture
-  # These variables are set from the user environment.
-  # shellcheck disable=SC2154
-  if [[ "${HOMEBREW_CHANGE_ARCH_TO_ARM}" == "1" ]] &&
-     [[ "${HOMEBREW_ROSETTA}" == "1" ]]
-  then
-    exec arch -arm64e "${HOMEBREW_BREW_FILE}" "$@"
-  fi
-fi
-
 # Where we store built products; a Cellar in HOMEBREW_PREFIX (often /usr/local
 # for bottles) unless there's already a Cellar in HOMEBREW_REPOSITORY.
 # These variables are set by bin/brew
@@ -170,6 +150,8 @@ safe_cd() {
 }
 
 brew() {
+  # This variable is set by bin/brew
+  # shellcheck disable=SC2154
   "${HOMEBREW_BREW_FILE}" "$@"
 }
 
@@ -197,6 +179,7 @@ check-run-command-as-root() {
   [[ "$(id -u)" == 0 ]] || return
 
   # Allow Azure Pipelines/GitHub Actions/Docker/Concourse/Kubernetes to do everything as root (as it's normal there)
+  [[ -f /.dockerenv ]] && return
   [[ -f /proc/1/cgroup ]] && grep -E "azpl_job|actions_job|docker|garden|kubepods" -q /proc/1/cgroup && return
 
   # Homebrew Services may need `sudo` for system-wide daemons.
@@ -358,6 +341,18 @@ fi
 ##### Now, do everything else (that may be a bit slower).
 #####
 
+# Docker image deprecation
+if [[ -f "${HOMEBREW_REPOSITORY}/.docker-deprecate" ]]
+then
+  DOCKER_DEPRECATION_MESSAGE="$(cat "${HOMEBREW_REPOSITORY}/.docker-deprecate")"
+  if [[ -n "${GITHUB_ACTIONS}" ]]
+  then
+    echo "::warning::${DOCKER_DEPRECATION_MESSAGE}" >&2
+  else
+    opoo "${DOCKER_DEPRECATION_MESSAGE}"
+  fi
+fi
+
 # USER isn't always set so provide a fall back for `brew` and subprocesses.
 export USER="${USER:-$(id -un)}"
 
@@ -429,6 +424,13 @@ then
   # Don't change this from Mac OS X to match what macOS itself does in Safari on 10.12
   HOMEBREW_OS_USER_AGENT_VERSION="Mac OS X ${HOMEBREW_MACOS_VERSION}"
 
+  if [[ "$(sysctl -n hw.optional.arm64 2>/dev/null)" == "1" ]]
+  then
+    # used in vendor-install.sh
+    # shellcheck disable=SC2034
+    HOMEBREW_PHYSICAL_PROCESSOR="arm64"
+  fi
+
   # Intentionally set this variable by exploding another.
   # shellcheck disable=SC2086,SC2183
   printf -v HOMEBREW_MACOS_VERSION_NUMERIC "%02d%02d%02d" ${HOMEBREW_MACOS_VERSION//./ }
@@ -495,18 +497,9 @@ else
   : "${HOMEBREW_OS_VERSION:=$(uname -r)}"
   HOMEBREW_OS_USER_AGENT_VERSION="${HOMEBREW_OS_VERSION}"
 
-  # This is set by the user environment.
-  # shellcheck disable=SC2154
-  if [[ -n "${HOMEBREW_ON_DEBIAN7}" ]]
-  then
-    # Special version for our debian 7 docker container used to build binutils
-    HOMEBREW_MINIMUM_CURL_VERSION="7.25.0"
-    HOMEBREW_SYSTEM_CA_CERTIFICATES_TOO_OLD="1"
-    HOMEBREW_FORCE_BREWED_CA_CERTIFICATES="1"
-  else
-    # Ensure the system Curl is a version that supports modern HTTPS certificates.
-    HOMEBREW_MINIMUM_CURL_VERSION="7.41.0"
-  fi
+  # Ensure the system Curl is a version that supports modern HTTPS certificates.
+  HOMEBREW_MINIMUM_CURL_VERSION="7.41.0"
+
   curl_version_output="$(${HOMEBREW_CURL} --version 2>/dev/null)"
   curl_name_and_version="${curl_version_output%% (*}"
   # shellcheck disable=SC2248
@@ -515,7 +508,7 @@ else
     message="Please update your system curl or set HOMEBREW_CURL_PATH to a newer version.
 Minimum required version: ${HOMEBREW_MINIMUM_CURL_VERSION}
 Your curl version: ${curl_name_and_version##* }
-Your curl executable: $(type -p ${HOMEBREW_CURL})"
+Your curl executable: $(type -p "${HOMEBREW_CURL}")"
 
     if [[ -z ${HOMEBREW_CURL_PATH} ]]
     then
@@ -544,7 +537,7 @@ Your curl executable: $(type -p ${HOMEBREW_CURL})"
     message="Please update your system Git or set HOMEBREW_GIT_PATH to a newer version.
 Minimum required version: ${HOMEBREW_MINIMUM_GIT_VERSION}
 Your Git version: ${major}.${minor}.${micro}.${build}
-Your Git executable: $(unset git && type -p ${HOMEBREW_GIT})"
+Your Git executable: $(unset git && type -p "${HOMEBREW_GIT}")"
     if [[ -z ${HOMEBREW_GIT_PATH} ]]
     then
       HOMEBREW_FORCE_BREWED_GIT="1"
@@ -720,7 +713,7 @@ then
 fi
 
 # Disable Ruby options we don't need.
-RUBY_DISABLE_OPTIONS="--disable=rubyopt"
+export HOMEBREW_RUBY_DISABLE_OPTIONS="--disable=gems,rubyopt"
 
 if [[ -z "${HOMEBREW_RUBY_WARNINGS}" ]]
 then
@@ -835,7 +828,7 @@ else
   # shellcheck disable=SC2154
   {
     auto-update "$@"
-    exec "${HOMEBREW_RUBY_PATH}" "${HOMEBREW_RUBY_WARNINGS}" "${RUBY_DISABLE_OPTIONS}" \
+    exec "${HOMEBREW_RUBY_PATH}" "${HOMEBREW_RUBY_WARNINGS}" "${HOMEBREW_RUBY_DISABLE_OPTIONS}" \
       "${HOMEBREW_LIBRARY}/Homebrew/brew.rb" "$@"
   }
 fi

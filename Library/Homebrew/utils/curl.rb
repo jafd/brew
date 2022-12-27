@@ -290,7 +290,25 @@ module Utils
           url_protected_by_cloudflare?(response) || url_protected_by_incapsula?(response)
         end
 
-        return "The #{url_type} #{url} is not reachable (HTTP status code #{details[:status_code]})"
+        # https://github.com/Homebrew/brew/issues/13789
+        # If the `:homepage` of a formula is private, it will fail an `audit`
+        # since there's no way to specify a `strategy` with `using:` and
+        # GitHub does not authorize access to the web UI using token
+        #
+        # Strategy:
+        # If the `:homepage` 404s, it's a GitHub link, and we have a token then
+        # check the API (which does use tokens) for the repository
+        repo_details = url.match(%r{https?://github\.com/(?<user>[^/]+)/(?<repo>[^/]+)/?.*})
+        check_github_api = url_type == SharedAudits::URL_TYPE_HOMEPAGE &&
+                           details[:status_code] == "404" &&
+                           repo_details &&
+                           Homebrew::EnvConfig.github_api_token
+
+        unless check_github_api
+          return "The #{url_type} #{url} is not reachable (HTTP status code #{details[:status_code]})"
+        end
+
+        "Unable to find homepage" if SharedAudits.github_repo_data(repo_details[:user], repo_details[:repo]).nil?
       end
 
       if url.start_with?("https://") && Homebrew::EnvConfig.no_insecure_redirect? &&
@@ -394,7 +412,7 @@ module Utils
             # Unknown charset in Content-Type header
           end
         end
-        file_contents = File.read(file.path, open_args)
+        file_contents = File.read(file.path, **open_args)
         file_hash = Digest::SHA2.hexdigest(file_contents) if hash_needed
       end
 
@@ -486,6 +504,30 @@ module Utils
       end
 
       nil
+    end
+
+    # Returns the final URL by following location headers in cURL responses.
+    # @param responses [Array<Hash>] An array of hashes containing response
+    #   status information and headers from `#parse_curl_response`.
+    # @param base_url [String] The URL to use as a base.
+    # @return [String] The final absolute URL after redirections.
+    sig {
+      params(
+        responses: T::Array[T::Hash[Symbol, T.untyped]],
+        base_url:  String,
+      ).returns(String)
+    }
+    def curl_response_follow_redirections(responses, base_url)
+      responses.each do |response|
+        next if response[:headers].blank?
+
+        location = response[:headers]["location"]
+        next if location.blank?
+
+        base_url = URI.join(base_url, location).to_s
+      end
+
+      base_url
     end
 
     private

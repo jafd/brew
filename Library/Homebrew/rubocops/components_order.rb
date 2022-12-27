@@ -14,13 +14,9 @@ module RuboCop
       class ComponentsOrder < FormulaCop
         extend AutoCorrector
 
-        def on_system_methods
-          @on_system_methods ||= [:intel, :arm, :macos, :linux, *MacOSVersions::SYMBOLS.keys].map do |m|
-            :"on_#{m}"
-          end
-        end
-
         def audit_formula(_node, _class_node, _parent_class_node, body_node)
+          return if body_node.nil?
+
           @present_components, @offensive_nodes = check_order(FORMULA_COMPONENT_PRECEDENCE_LIST, body_node)
 
           component_problem @offensive_nodes[0], @offensive_nodes[1] if @offensive_nodes
@@ -116,15 +112,25 @@ module RuboCop
         end
 
         def check_on_system_block_content(component_precedence_list, on_system_block)
+          if on_system_block.body.block_type? && !on_system_methods.include?(on_system_block.body.method_name)
+            offending_node(on_system_block)
+            problem "Nest `#{on_system_block.method_name}` blocks inside `#{on_system_block.body.method_name}` " \
+                    "blocks when there is only one inner block." do |corrector|
+              original_source = on_system_block.source.split("\n")
+              new_source = [original_source.second, original_source.first, *original_source.drop(2)]
+              corrector.replace(on_system_block.source_range, new_source.join("\n"))
+            end
+          end
           on_system_allowed_methods = %w[
-            depends_on
-            patch
-            resource
-            deprecate!
+            livecheck
+            keg_only
             disable!
+            deprecate!
+            depends_on
             conflicts_with
             fails_with
-            keg_only
+            resource
+            patch
             ignore_missing_libraries
           ]
           on_system_allowed_methods += on_system_methods.map(&:to_s)

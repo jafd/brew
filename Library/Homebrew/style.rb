@@ -49,7 +49,7 @@ module Homebrew
                     .partition { |f| f.realpath == HOMEBREW_BREW_FILE.realpath || f.extname == ".sh" }
 
       rubocop_result = if shell_files.any? && ruby_files.none?
-        output_type == :json ? [] : true
+        (output_type == :json) ? [] : true
       else
         run_rubocop(ruby_files, output_type,
                     fix: fix,
@@ -60,7 +60,7 @@ module Homebrew
       end
 
       shellcheck_result = if ruby_files.any? && shell_files.none?
-        output_type == :json ? [] : true
+        (output_type == :json) ? [] : true
       else
         run_shellcheck(shell_files, output_type, fix: fix)
       end
@@ -143,6 +143,7 @@ module Homebrew
 
       FileUtils.rm_rf cache_env["XDG_CACHE_HOME"] if reset_cache
 
+      ruby_args = HOMEBREW_RUBY_EXEC_ARGS.dup
       case output_type
       when :print
         args << "--debug" if debug
@@ -153,11 +154,11 @@ module Homebrew
 
         args << "--color" if Tty.color?
 
-        system cache_env, RUBY_PATH, RUBOCOP, *args
+        system cache_env, *ruby_args, "--", RUBOCOP, *args
         $CHILD_STATUS.success?
       when :json
-        result = system_command RUBY_PATH,
-                                args: [RUBOCOP, "--format", "json", *args],
+        result = system_command ruby_args.shift,
+                                args: [*ruby_args, "--", RUBOCOP, "--format", "json", *args],
                                 env:  cache_env
         json = json_result!(result)
         json["files"]
@@ -261,9 +262,14 @@ module Homebrew
         HOMEBREW_BREW_FILE,
         HOMEBREW_REPOSITORY/"completions/bash/brew",
         HOMEBREW_REPOSITORY/"Dockerfile",
-        *HOMEBREW_LIBRARY.glob("Homebrew/*.sh"),
+        *HOMEBREW_REPOSITORY.glob(".devcontainer/**/*.sh"),
+        *HOMEBREW_LIBRARY.glob("Homebrew/**/*.sh").reject { |path| path.to_s.include?("/vendor/") },
         *HOMEBREW_LIBRARY.glob("Homebrew/shims/**/*").map(&:realpath).uniq
-                         .reject { |path| path.directory? || path.basename.to_s == "cc" },
+                         .reject(&:directory?)
+                         .reject { |path| path.basename.to_s == "cc" }
+                         .select do |path|
+                           %r{^#! ?/bin/(?:ba)?sh( |$)}.match?(path.read(13))
+                         end,
         *HOMEBREW_LIBRARY.glob("Homebrew/{dev-,}cmd/*.sh"),
         *HOMEBREW_LIBRARY.glob("Homebrew/{cask/,}utils/*.sh"),
       ]

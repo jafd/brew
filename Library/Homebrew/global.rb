@@ -8,7 +8,6 @@ require "fileutils"
 require "json"
 require "json/add/exception"
 require "ostruct"
-require "pp"
 require "forwardable"
 
 # Only require "core_ext" here to ensure we're only requiring the minimum of
@@ -45,6 +44,7 @@ HOMEBREW_REQUIRED_RUBY_VERSION = ENV.fetch("HOMEBREW_REQUIRED_RUBY_VERSION").fre
 HOMEBREW_PRODUCT = ENV.fetch("HOMEBREW_PRODUCT").freeze
 HOMEBREW_VERSION = ENV.fetch("HOMEBREW_VERSION").freeze
 HOMEBREW_WWW = "https://brew.sh"
+HOMEBREW_DOCS_WWW = "https://docs.brew.sh"
 HOMEBREW_SYSTEM = ENV.fetch("HOMEBREW_SYSTEM").freeze
 HOMEBREW_PROCESSOR = ENV.fetch("HOMEBREW_PROCESSOR").freeze
 

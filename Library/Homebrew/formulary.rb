@@ -136,6 +136,18 @@ module Formulary
     class_s = Formulary.class_s(name)
     json_formula = Homebrew::API::Formula.all_formulae[name]
 
+    if (bottle_tag = Utils::Bottles.tag.to_s.presence) &&
+       (variations = json_formula["variations"].presence) &&
+       (variation = variations[bottle_tag].presence)
+      json_formula = json_formula.merge(variation)
+    end
+
+    uses_from_macos_names = json_formula["uses_from_macos"].map do |dep|
+      next dep unless dep.is_a? Hash
+
+      dep.keys.first
+    end
+
     klass = Class.new(::Formula) do
       desc json_formula["desc"]
       homepage json_formula["homepage"]
@@ -147,6 +159,7 @@ module Formulary
         stable do
           url urls_stable["url"]
           version json_formula["versions"]["stable"]
+          sha256 urls_stable["checksum"] if urls_stable["checksum"].present?
         end
       end
 
@@ -176,20 +189,18 @@ module Formulary
         disable! date: disable_date, because: reason
       end
 
-      json_formula["build_dependencies"].each do |dep|
-        depends_on dep => :build
-      end
-
       json_formula["dependencies"].each do |dep|
+        next if uses_from_macos_names.include? dep
+
         depends_on dep
       end
 
-      json_formula["recommended_dependencies"].each do |dep|
-        depends_on dep => :recommended
-      end
+      [:build, :test, :recommended, :optional].each do |type|
+        json_formula["#{type}_dependencies"].each do |dep|
+          next if uses_from_macos_names.include? dep
 
-      json_formula["optional_dependencies"].each do |dep|
-        depends_on dep => :optional
+          depends_on dep => type
+        end
       end
 
       json_formula["uses_from_macos"].each do |dep|
@@ -207,6 +218,7 @@ module Formulary
       end
     end
 
+    klass.loaded_from_api = true
     mod.const_set(class_s, klass)
 
     cache[:api] ||= {}
@@ -264,6 +276,7 @@ module Formulary
   end
 
   def self.convert_to_deprecate_disable_reason_string_or_symbol(string)
+    require "deprecate_disable"
     return string unless DeprecateDisable::DEPRECATE_DISABLE_REASONS.keys.map(&:to_s).include?(string)
 
     string.to_sym
@@ -518,6 +531,14 @@ module Formulary
     end
   end
 
+  # Load aliases from the API.
+  class AliasAPILoader < FormulaAPILoader
+    def initialize(alias_name)
+      super Homebrew::API::Formula.all_aliases[alias_name]
+      @alias_path = Formulary.core_alias_path(alias_name).to_s
+    end
+  end
+
   # Return a {Formula} instance for the given reference.
   # `ref` is a string containing:
   #
@@ -644,22 +665,29 @@ module Formulary
       if ref.start_with?("homebrew/core/") && Homebrew::EnvConfig.install_from_api?
         name = ref.split("/", 3).last
         return FormulaAPILoader.new(name) if Homebrew::API::Formula.all_formulae.key?(name)
+        return AliasAPILoader.new(name) if Homebrew::API::Formula.all_aliases.key?(name)
       end
 
       return TapLoader.new(ref, from: from)
     end
 
-    return FromPathLoader.new(ref) if File.extname(ref) == ".rb" && Pathname.new(ref).expand_path.exist?
+    pathname_ref = Pathname.new(ref)
+    return FromPathLoader.new(ref) if File.extname(ref) == ".rb" && pathname_ref.expand_path.exist?
 
-    if Homebrew::EnvConfig.install_from_api? && Homebrew::API::Formula.all_formulae.key?(ref)
-      return FormulaAPILoader.new(ref)
+    if Homebrew::EnvConfig.install_from_api?
+      return FormulaAPILoader.new(ref) if Homebrew::API::Formula.all_formulae.key?(ref)
+      return AliasAPILoader.new(ref) if Homebrew::API::Formula.all_aliases.key?(ref)
     end
 
     formula_with_that_name = core_path(ref)
     return FormulaLoader.new(ref, formula_with_that_name) if formula_with_that_name.file?
 
-    possible_alias = CoreTap.instance.alias_dir/ref
-    return AliasLoader.new(possible_alias) if possible_alias.file?
+    possible_alias = if pathname_ref.absolute?
+      pathname_ref
+    else
+      core_alias_path(ref)
+    end
+    return AliasLoader.new(possible_alias) if possible_alias.symlink?
 
     possible_tap_formulae = tap_paths(ref)
     raise TapFormulaAmbiguityError.new(ref, possible_tap_formulae) if possible_tap_formulae.size > 1
@@ -692,6 +720,10 @@ module Formulary
 
   def self.core_path(name)
     CoreTap.instance.formula_dir/"#{name.to_s.downcase}.rb"
+  end
+
+  def self.core_alias_path(name)
+    CoreTap.instance.alias_dir/name.to_s.downcase
   end
 
   def self.tap_paths(name, taps = Dir[HOMEBREW_LIBRARY/"Taps/*/*/"])

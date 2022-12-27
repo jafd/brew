@@ -562,4 +562,32 @@ describe Homebrew::CLI::Parser do
       expect { parser.parse(["--not-a-command"]) }.to raise_error(OptionParser::InvalidOption, /--not-a-command/)
     end
   end
+
+  describe "--cask on linux", :needs_linux do
+    subject(:parser) do
+      described_class.new do
+        switch "--cask"
+      end
+    end
+
+    it "throws an error when defined" do
+      expect { parser.parse(["--cask"]) }.to raise_error UsageError, /Casks are not supported on Linux/
+    end
+  end
+
+  describe "--formula on linux", :needs_linux do
+    it "doesn't set --formula when not defined" do
+      parser = described_class.new
+      args = parser.parse([])
+      expect(args.respond_to?(:formula?)).to be(false)
+    end
+
+    it "sets --formula to true when defined" do
+      parser = described_class.new do
+        switch "--formula"
+      end
+      args = parser.parse([])
+      expect(args.formula?).to be(true)
+    end
+  end
 end

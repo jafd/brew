@@ -36,6 +36,12 @@ module Homebrew
                      "disable auto-update entirely with HOMEBREW_NO_AUTO_UPDATE.",
         default:     300,
       },
+      HOMEBREW_AUTOREMOVE:                       {
+        description: "If set, calls to `brew cleanup` and `brew uninstall` will automatically " \
+                     "remove unused formula dependents and if HOMEBREW_NO_INSTALL_CLEANUP is not set, " \
+                     "`brew cleanup` will start running `brew autoremove` periodically.",
+        boolean:     true,
+      },
       HOMEBREW_BAT:                              {
         description: "If set, use `bat` for the `brew cat` command.",
         boolean:     true,
@@ -147,6 +153,11 @@ module Homebrew
                       "editors will do strange things in this case.",
         default_text: "`$EDITOR` or `$VISUAL`.",
       },
+      HOMEBREW_EVAL_ALL:                         {
+        description: "If set, `brew` commands evaluate all formulae and casks, executing their arbitrary code, by " \
+                     "default without requiring --eval-all. Required to cache formula and cask descriptions.",
+        boolean:     true,
+      },
       HOMEBREW_FAIL_LOG_LINES:                   {
         description: "Output this many lines of output on formula `system` failures.",
         default:     15,
@@ -193,7 +204,7 @@ module Homebrew
       },
       HOMEBREW_DOCKER_REGISTRY_TOKEN:            {
         description: "Use this bearer token for authenticating with a Docker registry proxying GitHub Packages. " \
-                     "Preferred over HOMEBREW_DOCKER_REGISTRY_TOKEN_BASIC.",
+                     "Preferred over HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN.",
       },
       HOMEBREW_GITHUB_PACKAGES_USER:             {
         description: "Use this username when accessing the GitHub Packages Registry (where bottles may be stored).",
@@ -263,8 +274,8 @@ module Homebrew
         boolean:     true,
       },
       HOMEBREW_NO_CLEANUP_FORMULAE:              {
-        description: "A comma-separated list of formulae. Homebrew will refuse to clean up a " \
-                     "formula if it appears on this list.",
+        description: "A comma-separated list of formulae. Homebrew will refuse to clean up " \
+                     "or autoremove a formula if it appears on this list.",
       },
       HOMEBREW_NO_COLOR:                         {
         description:  "If set, do not print text with colour added.",
@@ -306,6 +317,10 @@ module Homebrew
         description: "If set, `brew install <formula>` will not upgrade `<formula>` if it is installed but " \
                      "outdated.",
         boolean:     true,
+      },
+      HOMEBREW_PIP_INDEX_URL:                    {
+        description:  "If set, `brew install <formula>` will use this URL to download PyPI package resources.",
+        default_text: "`https://pypi.org/simple`.",
       },
       HOMEBREW_PRY:                              {
         description: "If set, use Pry for the `brew irb` command.",

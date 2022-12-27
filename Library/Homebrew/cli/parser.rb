@@ -25,7 +25,7 @@ module Homebrew
         begin
           Homebrew.send(cmd_args_method_name) if require?(cmd_path)
         rescue NoMethodError => e
-          raise if e.name != cmd_args_method_name
+          raise if e.name.to_sym != cmd_args_method_name
 
           nil
         end
@@ -329,8 +329,11 @@ module Homebrew
           remaining + non_options
         end
 
+        set_default_options
+
         unless ignore_invalid_options
           check_constraint_violations
+          validate_options
           check_named_args(named_args)
         end
 
@@ -349,6 +352,10 @@ module Homebrew
         @args
       end
 
+      def set_default_options; end
+
+      def validate_options; end
+
       def generate_help_text
         Formatter.format_help_text(@parser.to_s, width: COMMAND_DESC_WIDTH)
                  .gsub(/\n.*?@@HIDDEN@@.*?(?=\n)/, "")
@@ -361,8 +368,9 @@ module Homebrew
       end
 
       def cask_options
-        self.class.global_cask_options.each do |method, *args, **options|
-          send(method, *args, **options)
+        self.class.global_cask_options.each do |args|
+          options = args.pop
+          send(*args, **options)
           conflicts "--formula", args.last
         end
         @cask_options = true
@@ -701,3 +709,5 @@ module Homebrew
     end
   end
 end
+
+require "extend/os/parser"

@@ -125,7 +125,7 @@ module Kernel
     puts sput unless sput.empty?
   end
 
-  def oh1(title, truncate: :auto)
+  def oh1_title(title, truncate: :auto)
     verbose = if respond_to?(:verbose?)
       verbose?
     else
@@ -133,7 +133,11 @@ module Kernel
     end
 
     title = Tty.truncate(title) if $stdout.tty? && !verbose && truncate == :auto
-    puts Formatter.headline(title, color: :green)
+    Formatter.headline(title, color: :green)
+  end
+
+  def oh1(title, truncate: :auto)
+    puts oh1_title(title, truncate: truncate)
   end
 
   # Print a message prefixed with "Warning" (do this rarely).
@@ -360,8 +364,8 @@ module Kernel
     editor = Homebrew::EnvConfig.editor
     return editor if editor
 
-    # Find Atom, Sublime Text, VS Code, Textmate, BBEdit / TextWrangler, or vim
-    editor = %w[atom subl code mate edit vim].find do |candidate|
+    # Find Atom, Sublime Text, VS Code, Textmate, BBEdit, or vim
+    editor = %w[atom subl code mate bbedit vim].find do |candidate|
       candidate if which(candidate, ORIGINAL_PATHS)
     end
     editor ||= "vim"

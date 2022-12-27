@@ -57,6 +57,10 @@ module Homebrew
         [:switch, "--keep-tmp", {
           description: "Retain the temporary files created during installation.",
         }],
+        [:switch, "--debug-symbols", {
+          depends_on:  "--build-from-source",
+          description: "Generate debug symbols on build. Source will be retained in a cache directory. ",
+        }],
         [:switch, "--display-times", {
           env:         :display_install_times,
           description: "Print install times for each formula at the end of the run.",
@@ -64,18 +68,20 @@ module Homebrew
         [:switch, "-g", "--git", {
           description: "Create a Git repository, useful for creating patches to the software.",
         }],
-      ].each do |options|
-        send(*options)
-        conflicts "--cask", options[-2]
+      ].each do |args|
+        options = args.pop
+        send(*args, **options)
+        conflicts "--cask", args.last
       end
       formula_options
       [
         [:switch, "--cask", "--casks", { description: "Treat all named arguments as casks." }],
-        *Cask::Cmd::AbstractCommand::OPTIONS,
-        *Cask::Cmd::Install::OPTIONS,
-      ].each do |options|
-        send(*options)
-        conflicts "--formula", options[-2]
+        *Cask::Cmd::AbstractCommand::OPTIONS.map(&:dup),
+        *Cask::Cmd::Install::OPTIONS.map(&:dup),
+      ].each do |args|
+        options = args.pop
+        send(*args, **options)
+        conflicts "--formula", args.last
       end
       cask_options
 
@@ -115,6 +121,7 @@ module Homebrew
         build_from_source_formulae: args.build_from_source_formulae,
         interactive:                args.interactive?,
         keep_tmp:                   args.keep_tmp?,
+        debug_symbols:              args.debug_symbols?,
         force:                      args.force?,
         debug:                      args.debug?,
         quiet:                      args.quiet?,
@@ -132,6 +139,7 @@ module Homebrew
       build_from_source_formulae: args.build_from_source_formulae,
       interactive:                args.interactive?,
       keep_tmp:                   args.keep_tmp?,
+      debug_symbols:              args.debug_symbols?,
       force:                      args.force?,
       debug:                      args.debug?,
       quiet:                      args.quiet?,
@@ -150,6 +158,8 @@ module Homebrew
         zap:            args.zap?,
       )
     end
+
+    Cleanup.periodic_clean!
 
     Homebrew.messages.display_messages(display_times: args.display_times?)
   end

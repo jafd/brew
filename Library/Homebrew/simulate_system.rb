@@ -9,7 +9,7 @@ module Homebrew
     class << self
       extend T::Sig
 
-      attr_reader :os, :arch
+      attr_reader :arch, :os
 
       sig { params(new_os: Symbol).void }
       def os=(new_os)
@@ -32,19 +32,26 @@ module Homebrew
       end
 
       sig { returns(T::Boolean) }
-      def none?
-        @os.nil? && @arch.nil?
+      def simulating_or_running_on_macos?
+        [:macos, *MacOSVersions::SYMBOLS.keys].include?(os)
       end
 
       sig { returns(T::Boolean) }
-      def macos?
-        [:macos, *MacOSVersions::SYMBOLS.keys].include?(@os)
+      def simulating_or_running_on_linux?
+        os == :linux
       end
 
-      sig { returns(T::Boolean) }
-      def linux?
-        @os == :linux
+      sig { returns(Symbol) }
+      def current_arch
+        @arch || Hardware::CPU.type
+      end
+
+      sig { returns(Symbol) }
+      def current_os
+        os || :generic
       end
     end
   end
 end
+
+require "extend/os/simulate_system"

@@ -40,7 +40,7 @@ module Cask
       def initialize(cask, directives)
         directives.assert_valid_keys!(*ORDERED_DIRECTIVES)
 
-        super(cask)
+        super(cask, **directives)
         directives[:signal] = Array(directives[:signal]).flatten.each_slice(2).to_a
         @directives = directives
 
@@ -307,7 +307,7 @@ module Cask
           return
         end
 
-        command.run(executable_path, script_arguments)
+        command.run(executable_path, **script_arguments)
         sleep 1
       end
 
@@ -430,11 +430,11 @@ module Cask
         success
       end
 
-      def uninstall_rmdir(*args)
+      def uninstall_rmdir(*args, **kwargs)
         return if args.empty?
 
         ohai "Removing directories if empty:"
-        recursive_rmdir(*args)
+        recursive_rmdir(*args, **kwargs)
       end
     end
   end

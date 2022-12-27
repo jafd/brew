@@ -1,6 +1,8 @@
 # typed: true
 # frozen_string_literal: true
 
+require "livecheck/constants"
+
 # The {Livecheck} class implements the DSL methods used in a formula's, cask's
 # or resource's `livecheck` block and stores related instance variables. Most
 # of these methods also return the related instance variable when no argument
@@ -143,7 +145,8 @@ class Livecheck
   end
 
   delegate version: :@package_or_resource
-  private :version
+  delegate arch: :@package_or_resource
+  private :version, :arch
 
   # Returns a `Hash` of all instance variable values.
   # @return [Hash]

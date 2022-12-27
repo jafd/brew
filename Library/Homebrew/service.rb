@@ -28,6 +28,11 @@ module Homebrew
       @service_block = block
     end
 
+    sig { returns(Formula) }
+    def f
+      @formula
+    end
+
     sig { params(command: T.nilable(T.any(T::Array[String], String, Pathname))).returns(T.nilable(Array)) }
     def run(command = nil)
       case T.unsafe(command)
@@ -122,6 +127,26 @@ module Homebrew
       else
         raise TypeError, "Service#keep_alive expects a Boolean or Hash"
       end
+    end
+
+    sig { params(value: T.nilable(T::Boolean)).returns(T.nilable(T::Boolean)) }
+    def require_root(value = nil)
+      case T.unsafe(value)
+      when nil
+        @require_root
+      when true, false
+        @require_root = value
+      else
+        raise TypeError, "Service#require_root expects a Boolean"
+      end
+    end
+
+    # Returns a `Boolean` describing if a service requires root access.
+    # @return [Boolean]
+    sig { returns(T::Boolean) }
+    def requires_root?
+      instance_eval(&@service_block)
+      @require_root.present? && @require_root == true
     end
 
     sig { params(value: T.nilable(String)).returns(T.nilable(T::Hash[Symbol, String])) }
@@ -376,6 +401,14 @@ module Homebrew
         base[:StartCalendarInterval] = @cron.reject { |_, value| value == "*" }
       end
 
+      # Adding all session types has as the primary effect that if you initialise it through e.g. a Background session
+      # and you later "physically" sign in to the owning account (Aqua session), things shouldn't flip out.
+      # Also, we're not checking @process_type here because that is used to indicate process priority and not
+      # necessarily if it should run in a specific session type. Like database services could run with ProcessType
+      # Interactive so they have no resource limitations enforced upon them, but they aren't really interactive in the
+      # general sense.
+      base[:LimitLoadToSessionType] = %w[Aqua Background LoginWindow StandardIO System]
+
       base.to_plist
     end
 
@@ -388,7 +421,7 @@ module Homebrew
         Description=Homebrew generated unit for #{@formula.name}
 
         [Install]
-        WantedBy=multi-user.target
+        WantedBy=default.target
 
         [Service]
       EOS
@@ -397,7 +430,7 @@ module Homebrew
       cmd = command.join(" ")
 
       options = []
-      options << "Type=#{@launch_only_once == true ? "oneshot" : "simple"}"
+      options << "Type=#{(@launch_only_once == true) ? "oneshot" : "simple"}"
       options << "ExecStart=#{cmd}"
 
       options << "Restart=always" if @keep_alive.present? && @keep_alive[:always].present?
@@ -433,8 +466,8 @@ module Homebrew
       options << "OnUnitActiveSec=#{@interval}" if @run_type == RUN_TYPE_INTERVAL
 
       if @run_type == RUN_TYPE_CRON
-        minutes = @cron[:Minute] == "*" ? "*" : format("%02d", @cron[:Minute])
-        hours   = @cron[:Hour] == "*" ? "*" : format("%02d", @cron[:Hour])
+        minutes = (@cron[:Minute] == "*") ? "*" : format("%02d", @cron[:Minute])
+        hours   = (@cron[:Hour] == "*") ? "*" : format("%02d", @cron[:Hour])
         options << "OnCalendar=#{@cron[:Weekday]}-*-#{@cron[:Month]}-#{@cron[:Day]} #{hours}:#{minutes}:00"
       end
 

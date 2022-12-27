@@ -113,11 +113,15 @@ module Homebrew
 
       def please_create_pull_requests(what = "unsupported configuration")
         <<~EOS
-          You will encounter build failures with some formulae.
-          Please create pull requests instead of asking for help on Homebrew's GitHub,
-          Twitter or any other official channels. You are responsible for resolving
-          any issues you experience while you are running this
-          #{what}.
+          It is expected behaviour that some formulae will fail to build in this #{what}.
+          It is expected behaviour that Homebrew will be buggy and slow.
+          Do not create any issues about this on Homebrew's GitHub repositories.
+          Do not create any issues even if you think this message is unrelated.
+          Any opened issues will be immediately closed without response.
+          Do not ask for help from MacHomebrew on Twitter.
+          You may ask for help in Homebrew's discussions but are unlikely to receive a response.
+          Try to figure out the problem yourself and submit a fix as a pull request.
+          We will review it but may or may not accept it.
         EOS
       end
 
@@ -174,32 +178,6 @@ module Homebrew
         <<~EOS
           No developer tools installed.
           #{DevelopmentTools.installation_instructions}
-        EOS
-      end
-
-      # Anaconda installs multiple system & brew dupes, including OpenSSL, Python,
-      # sqlite, libpng, Qt, etc. Regularly breaks compile on Vim, MacVim and others.
-      # Is flagged as part of the *-config script checks below, but people seem
-      # to ignore those as warnings rather than extremely likely breakage.
-      def check_for_anaconda
-        return unless which("anaconda")
-        return unless which("python")
-
-        anaconda_directory = which("anaconda").realpath.dirname
-        python_binary = Utils.popen_read(which("python"), "-c", "import sys; sys.stdout.write(sys.executable)")
-        python_directory = Pathname.new(python_binary).realpath.dirname
-
-        # Only warn if Python lives with Anaconda, since is most problematic case.
-        return unless python_directory == anaconda_directory
-
-        <<~EOS
-          Anaconda is known to frequently break Homebrew builds, including Vim and
-          MacVim, due to bundling many duplicates of system and Homebrew-provided
-          tools.
-
-          If you encounter a build failure please temporarily remove Anaconda
-          from your $PATH and attempt the build again prior to reporting the
-          failure to us. Thanks!
         EOS
       end
 
@@ -473,54 +451,6 @@ module Homebrew
         EOS
       end
 
-      def check_for_config_scripts
-        return unless HOMEBREW_CELLAR.exist?
-
-        real_cellar = HOMEBREW_CELLAR.realpath
-
-        scripts = []
-
-        allowlist = %W[
-          /bin /sbin
-          /usr/bin /usr/sbin
-          /usr/X11/bin /usr/X11R6/bin /opt/X11/bin
-          #{HOMEBREW_PREFIX}/bin #{HOMEBREW_PREFIX}/sbin
-          /Applications/Server.app/Contents/ServerRoot/usr/bin
-          /Applications/Server.app/Contents/ServerRoot/usr/sbin
-        ]
-        if OS.mac? && Hardware::CPU.physical_cpu_arm64?
-          allowlist += %W[
-            #{HOMEBREW_MACOS_ARM_DEFAULT_PREFIX}/bin
-            #{HOMEBREW_MACOS_ARM_DEFAULT_PREFIX}/sbin
-            #{HOMEBREW_DEFAULT_PREFIX}/bin
-            #{HOMEBREW_DEFAULT_PREFIX}/sbin
-          ]
-        end
-        allowlist.map!(&:downcase)
-
-        paths.each do |p|
-          next if allowlist.include?(p.downcase) || !File.directory?(p)
-
-          realpath = Pathname.new(p).realpath.to_s
-          next if realpath.start_with?(real_cellar.to_s, HOMEBREW_CELLAR.to_s)
-
-          scripts += Dir.chdir(p) { Dir["*-config"] }.map { |c| File.join(p, c) }
-        end
-
-        return if scripts.empty?
-
-        inject_file_list scripts, <<~EOS
-          "config" scripts exist outside your system or Homebrew directories.
-          `./configure` scripts often look for *-config scripts to determine if
-          software packages are installed, and which additional flags to use when
-          compiling and linking.
-
-          Having additional scripts in your path can confuse software installed via
-          Homebrew if the config script overrides a system or Homebrew-provided
-          script of the same name. We found the following "config" scripts:
-        EOS
-      end
-
       def check_for_symlinked_cellar
         return unless HOMEBREW_CELLAR.exist?
         return unless HOMEBREW_CELLAR.symlink?
@@ -591,7 +521,11 @@ module Homebrew
 
       def check_coretap_integrity
         coretap = CoreTap.instance
-        return if !coretap.installed? && EnvConfig.install_from_api?
+        unless coretap.installed?
+          return if EnvConfig.install_from_api?
+
+          CoreTap.ensure_installed!
+        end
 
         broken_tap(coretap) || examine_git_origin(coretap.path, Homebrew::EnvConfig.core_git_remote)
       end
@@ -738,7 +672,7 @@ module Homebrew
             If this is a surprise to you, then you should stash these modifications.
             Stashing returns Homebrew to a pristine state but can be undone
             should you later need to do so for some reason.
-              cd #{path} && git stash && git clean -d -f
+              cd #{path} && git stash -u && git clean -d -f
           EOS
 
           modified = status.split("\n")
@@ -874,8 +808,9 @@ module Homebrew
 
         <<~EOS
           Your Homebrew's prefix is not #{Homebrew::DEFAULT_PREFIX}.
-          Some of Homebrew's bottles (binary packages) can only be used with the default
-          prefix (#{Homebrew::DEFAULT_PREFIX}).
+
+          Many of Homebrew's bottles (binary packages) can only be used with the default prefix.
+          Consider uninstalling Homebrew and reinstalling into the default prefix.
           #{please_create_pull_requests}
         EOS
       end
@@ -917,7 +852,7 @@ module Homebrew
                  .gsub("This is an unsupported configuration, likely to break in " \
                        "the future and leave your machine in an unknown state.", "")
                  .gsub("System Integrity Protection status: ", "")
-                 .delete("\t\.")
+                 .delete("\t.")
                  .capitalize
                  .strip
           else
@@ -1045,11 +980,11 @@ module Homebrew
         when :quarantine_available
           nil
         when :xattr_broken
-          "There's no working version of `xattr` on this system."
+          "No Cask quarantine support available: there's no working version of `xattr` on this system."
         when :no_swift
-          "Swift is not available on this system."
+          "No Cask quarantine support available: there's no available version of `swift` on this system."
         else
-          "Unknown support status"
+          "No Cask quarantine support available: unknown reason."
         end
       end
 
